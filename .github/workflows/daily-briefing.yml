@@ -1,4 +1,4 @@
-name: Daily Market Risk Briefing
+name: Daily Market Summary
 
 on:
   schedule:
@@ -125,7 +125,7 @@ jobs:
           STATUS=$(curl --silent --show-error --output /tmp/instapaper-response.txt --write-out '%{http_code}' \
             --user "$INSTAPAPER_USERNAME:$INSTAPAPER_PASSWORD" \
             --data-urlencode "url=$REPORT_URL" \
-            --data-urlencode "title=Market Risk Briefing — $REPORT_DATE" \
+            --data-urlencode "title=Market Summary — $REPORT_DATE" \
             https://www.instapaper.com/api/add)
           if [[ "$STATUS" != "201" ]]; then
             echo "Instapaper returned HTTP $STATUS" >&2

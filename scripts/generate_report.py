@@ -13,6 +13,7 @@ import statistics
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -21,6 +22,7 @@ from typing import Callable
 
 FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={}"
 USER_AGENT = "market-risk-briefing/1.0 (GitHub Actions; public-data reader)"
+YAHOO_CHART = "https://query2.finance.yahoo.com/v8/finance/chart/{}"
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,29 @@ class Metric:
     transform: Callable[[dict[str, list[tuple[date, float]]]], tuple[float, date]]
     score: Callable[[float], float]
     note: str
+
+
+@dataclass(frozen=True)
+class Instrument:
+    label: str
+    feed_symbol: str
+    name: str
+
+
+WATCHLIST = (
+    Instrument("SPYI.IBIS2", "SPYI.DE", "SPDR MSCI ACWI IMI UCITS ETF"),
+    Instrument("SPYL.IBIS2", "SPYL.DE", "SPDR S&P 500 UCITS ETF"),
+    Instrument("SEC0.IBIS2", "SEC0.DE", "iShares MSCI Global Semiconductors UCITS ETF"),
+    Instrument("XNAS.IBIS2", "XNAS.DE", "Xtrackers NASDAQ 100 UCITS ETF"),
+    Instrument("QUTM.IBIS2", "QUTM.DE", "VanEck Quantum Computing UCITS ETF"),
+    Instrument("EGLN.LSEETF", "EGLN.L", "iShares Physical Gold ETC"),
+    Instrument("XAIX.IBIS2", "XAIX.DE", "Xtrackers Artificial Intelligence & Big Data UCITS ETF"),
+    Instrument("IWMO.BVME.ETF", "IWMO.MI", "iShares Edge MSCI World Momentum Factor UCITS ETF"),
+    Instrument("ZPRV.IBIS2", "ZPRV.DE", "SPDR MSCI USA Small Cap Value Weighted UCITS ETF"),
+    Instrument("NVS.IBIS2", "NOT.DE", "Novartis"),
+    Instrument("N20.IBIS2", "NOV.DE", "Novo Nordisk"),
+    Instrument("ASME.IBIS2", "ASME.DE", "ASML Holding"),
+)
 
 
 def latest(data, series):
@@ -136,6 +161,65 @@ def fetch_series(series_id: str, retries: int = 3) -> list[tuple[date, float]]:
     raise RuntimeError(f"Could not fetch {series_id}: {last_error}")
 
 
+def fetch_chart(symbol: str, report_date: date, retries: int = 3) -> tuple[list[tuple[date, float]], str]:
+    """Fetch adjusted daily closes and the trading currency from Yahoo's chart feed."""
+    start = datetime.combine(report_date.replace(year=report_date.year - 2), datetime.min.time(), tzinfo=timezone.utc)
+    end = datetime.combine(report_date, datetime.max.time(), tzinfo=timezone.utc)
+    query = urllib.parse.urlencode({"period1": int(start.timestamp()), "period2": int(end.timestamp()), "interval": "1d", "events": "history"})
+    request = urllib.request.Request(
+        f"{YAHOO_CHART.format(urllib.parse.quote(symbol, safe=''))}?{query}",
+        headers={"User-Agent": "Mozilla/5.0 (compatible; market-risk-briefing/1.0)"},
+    )
+    last_error = None
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                payload = json.loads(response.read())
+            chart = payload["chart"]["result"][0]
+            meta = chart["meta"]
+            closes = chart["indicators"].get("adjclose", chart["indicators"]["quote"])[0].get("adjclose")
+            if closes is None:
+                closes = chart["indicators"]["quote"][0]["close"]
+            rows = [
+                (datetime.fromtimestamp(ts, timezone.utc).date(), float(close))
+                for ts, close in zip(chart["timestamp"], closes)
+                if close is not None and datetime.fromtimestamp(ts, timezone.utc).date() <= report_date
+            ]
+            if len(rows) < 2:
+                raise ValueError(f"Not enough price history for {symbol}")
+            return rows, meta.get("currency", "")
+        except (urllib.error.URLError, TimeoutError, ValueError, KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+            last_error = exc
+            if attempt + 1 < retries:
+                time.sleep(2 ** attempt)
+    raise RuntimeError(f"Could not fetch {symbol}: {last_error}")
+
+
+def stock_summary(instrument: Instrument, rows: list[tuple[date, float]], currency: str) -> dict:
+    if currency != "EUR":
+        raise ValueError(f"{instrument.label} is quoted in {currency or 'an unknown currency'}, not EUR")
+    trailing = rows[-252:]
+    current = trailing[-1][1]
+    month_base = trailing[-22][1] if len(trailing) >= 22 else trailing[0][1]
+    day_base = trailing[-2][1]
+    ma50 = statistics.fmean(value for _, value in trailing[-50:])
+    high = max(value for _, value in trailing)
+    return {
+        "label": instrument.label, "name": instrument.name, "price": current,
+        "day": 100 * (current / day_base - 1), "month": 100 * (current / month_base - 1),
+        "from_high": 100 * (current / high - 1), "trend": "Above 50-day avg." if current >= ma50 else "Below 50-day avg.",
+        "as_of": trailing[-1][0].isoformat(), "source_symbol": instrument.feed_symbol,
+    }
+
+
+def gold_summary(gold_rows, fx_rows):
+    """Use COMEX gold as a transparent XAU proxy and convert USD/oz to EUR/oz."""
+    fx_by_date = dict(fx_rows)
+    shared = [(d, value / fx_by_date[d]) for d, value in gold_rows if d in fx_by_date and fx_by_date[d] > 0]
+    instrument = Instrument("XAU", "GC=F", "Gold (COMEX proxy, EUR per troy ounce)")
+    return stock_summary(instrument, shared, "EUR")
+
+
 def risk_label(score):
     if score < 25:
         return "Low", "low"
@@ -153,7 +237,7 @@ def fmt(value, unit):
     return f"{value:+.2f}{suffix}" if value < 0 or unit == " pp" else f"{value:.2f}{suffix}"
 
 
-def render_report(report_date, results, failures, generated_at):
+def render_report(report_date, results, failures, generated_at, stocks=(), stock_failures=()):
     total_weight = sum(r["weight"] for r in results)
     score = sum(r["score"] * r["weight"] for r in results) / total_weight
     label, _ = risk_label(score)
@@ -172,6 +256,22 @@ def render_report(report_date, results, failures, generated_at):
     warning = ""
     if failures:
         warning = '<p><strong>Partial data:</strong> ' + html.escape("; ".join(failures)) + "</p>"
+    stock_rows = "".join(
+        "<tr>"
+        f'<th scope="row"><strong>{html.escape(r["label"])}</strong><br><small>{html.escape(r["name"])}</small></th>'
+        f'<td>€{r["price"]:,.2f}</td><td>{r["day"]:+.1f}%</td><td>{r["month"]:+.1f}%</td>'
+        f'<td>{r["from_high"]:+.1f}%</td><td>{html.escape(r["trend"])}</td><td>{r["as_of"]}</td>'
+        "</tr>" for r in stocks
+    )
+    stock_section = "<h2>Stock watchlist</h2>"
+    if stock_rows:
+        stock_section += (
+            '<table><thead><tr><th>Instrument</th><th>Price</th><th>1 day</th><th>1 month</th>'
+            '<th>From 52-week high</th><th>Trend</th><th>As of</th></tr></thead>'
+            f'<tbody>{stock_rows}</tbody></table>'
+        )
+    if stock_failures:
+        stock_section += '<p><strong>Unavailable watchlist data:</strong> ' + html.escape("; ".join(stock_failures)) + "</p>"
     source_items = "".join(
         f'<li>{html.escape(r["name"])} — {html.escape(r["source_label"])} ('
         + ", ".join(
@@ -183,17 +283,18 @@ def render_report(report_date, results, failures, generated_at):
     )
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Market Risk Briefing — {report_date}</title><meta name="description" content="Daily rules-based market risk briefing for {report_date}.">
+<title>Market Summary — {report_date}</title><meta name="description" content="Daily market summary and rules-based risk briefing for {report_date}.">
 </head><body><article>
 <p><strong>Report date:</strong> {report_date}. Data observations range from {oldest} to {freshest}.</p>
 <p><strong>Composite risk: {score:.0f}/100 — {label}.</strong> A weighted reading from {len(results)} public market and macro indicators. Higher means more defensive conditions.</p>
+{stock_section}
 {warning}
 <h2>Main risk drivers</h2><ol>{driver_items}</ol>
 <h2>Relative stabilizers</h2><ul>{positive_items}</ul>
 <h2>Indicator dashboard</h2><ul>{metric_items}</ul>
 <h2>How to read this</h2><p>This is a mechanical monitoring signal, not a forecast or investment recommendation. Scores use fixed threshold bands and are reweighted across available indicators. Monthly and weekly series update less often than market prices.</p>
 <h2>Sources</h2><ul>{source_items}</ul>
-<p>Generated {generated_at} UTC. Public observations are downloaded from FRED. Methodology and thresholds are documented in the repository README.</p>
+<p>Generated {generated_at} UTC. Risk observations are downloaded from FRED. Watchlist prices come from Yahoo Finance's chart feed; XAU uses COMEX gold converted to euros with EUR/USD. Methodology and thresholds are documented in the repository README.</p>
 </article></body></html>''', score, label
 
 
@@ -211,10 +312,12 @@ def main():
     report_path = out / "index.html"
     meta_path = out / "report.json"
 
+    stocks, stock_failures = [], []
     if args.fixture:
         raw = json.loads(Path(args.fixture).read_text())
         data = {k: [(date.fromisoformat(d), float(v)) for d, v in rows] for k, rows in raw.items()}
         fetch_failures = []
+        stock_failures.append("watchlist omitted in offline fixture mode")
     else:
         data, fetch_failures = {}, []
         for series in sorted({s for metric in METRICS for s in metric.series}):
@@ -224,6 +327,23 @@ def main():
             except RuntimeError as exc:
                 fetch_failures.append(str(exc))
                 print(f"WARNING: {exc}", file=sys.stderr)
+        for instrument in WATCHLIST:
+            try:
+                rows, currency = fetch_chart(instrument.feed_symbol, report_date)
+                stocks.append(stock_summary(instrument, rows, currency))
+                print(f"Fetched {instrument.label}: {len(rows)} observations")
+            except (RuntimeError, ValueError, ZeroDivisionError, statistics.StatisticsError) as exc:
+                stock_failures.append(f"{instrument.label}: {exc}")
+                print(f"WARNING: {instrument.label}: {exc}", file=sys.stderr)
+        try:
+            gold_rows, gold_currency = fetch_chart("GC=F", report_date)
+            fx_rows, fx_currency = fetch_chart("EURUSD=X", report_date)
+            if gold_currency != "USD" or fx_currency != "USD":
+                raise ValueError(f"unexpected gold/FX currencies: {gold_currency}/{fx_currency}")
+            stocks.append(gold_summary(gold_rows, fx_rows))
+        except (RuntimeError, ValueError, ZeroDivisionError, statistics.StatisticsError) as exc:
+            stock_failures.append(f"XAU: {exc}")
+            print(f"WARNING: XAU: {exc}", file=sys.stderr)
 
     # A manually generated historical report must never look ahead. This also
     # removes any unexpectedly future-dated observation from a live response.
@@ -245,7 +365,7 @@ def main():
         raise SystemExit("Too few indicators were available (less than 50% of configured weight); refusing to publish.")
 
     generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    page, score, label = render_report(report_date.isoformat(), results, failures, generated_at)
+    page, score, label = render_report(report_date.isoformat(), results, failures, generated_at, stocks, stock_failures)
     report_path.write_text(page, encoding="utf-8")
     meta_path.write_text(json.dumps({"date": report_date.isoformat(), "score": score, "label": label, "generated_at": generated_at}, indent=2) + "\n")
     print(f"Generated {report_path} with score {score:.1f} ({label})")

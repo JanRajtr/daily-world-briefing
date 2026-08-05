@@ -58,7 +58,7 @@ class GeneratorTests(unittest.TestCase):
         page, _, _ = generator.render_report("2025-01-02", [result], [], "2025-01-02T00:00:00Z")
         self.assertIn("/series/DGS10", page)
         self.assertIn("/series/DGS2", page)
-        self.assertNotIn("<table", page)
+        self.assertIn("Stock watchlist", page)
         self.assertNotIn("<style", page)
         self.assertNotIn("<h1", page)
         self.assertIn("Latest: +0.10 pp. Risk: 50/100.", page)
@@ -80,7 +80,34 @@ class GeneratorTests(unittest.TestCase):
             ):
                 generator.main()
             self.assertNotEqual(report.read_text(), "original")
-            self.assertIn("Market Risk Briefing", report.read_text())
+            self.assertIn("Market Summary", report.read_text())
+
+    def test_stock_summary_calculates_euro_watchlist_fields(self):
+        rows = [(date(2025, 1, day), 100 + day) for day in range(1, 29)]
+        item = generator.stock_summary(generator.Instrument("TEST.IBIS2", "TEST.DE", "Test"), rows, "EUR")
+        self.assertEqual(item["price"], 128)
+        self.assertGreater(item["day"], 0)
+        self.assertEqual(item["from_high"], 0)
+        self.assertEqual(item["trend"], "Above 50-day avg.")
+
+    def test_stock_summary_rejects_non_euro_quote(self):
+        rows = [(date(2025, 1, 1), 100), (date(2025, 1, 2), 101)]
+        with self.assertRaisesRegex(ValueError, "not EUR"):
+            generator.stock_summary(generator.Instrument("TEST", "TEST", "Test"), rows, "USD")
+
+    def test_watchlist_is_rendered_before_risk_drivers(self):
+        result = {
+            "name": "Risk", "weight": 100, "score": 25, "value": 1,
+            "unit": "", "as_of": "2025-01-02", "note": "note",
+            "source_label": "source", "series": ("TEST",),
+        }
+        stock = {
+            "label": "SPYI.IBIS2", "name": "ETF", "price": 10, "day": 1,
+            "month": 2, "from_high": -3, "trend": "Above 50-day avg.", "as_of": "2025-01-02",
+        }
+        page, _, _ = generator.render_report("2025-01-02", [result], [], "now", [stock])
+        self.assertIn("€10.00", page)
+        self.assertLess(page.index("Stock watchlist"), page.index("Main risk drivers"))
 
     def test_future_report_date_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
