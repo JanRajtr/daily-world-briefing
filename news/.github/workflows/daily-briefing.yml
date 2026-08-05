@@ -1,0 +1,100 @@
+name: Daily World Briefing
+
+on:
+  schedule:
+    - cron: "35 5 * * *"
+  workflow_dispatch:
+    inputs:
+      report_date:
+        description: "Optional report date (YYYY-MM-DD); blank means today in Europe/Prague"
+        required: false
+        type: string
+      notify_instapaper:
+        description: "Send the published URL to Instapaper"
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: daily-world-briefing-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      report_date: ${{ steps.date.outputs.report_date }}
+      should_notify: ${{ steps.date.outputs.should_notify }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Select date and notification mode
+        id: date
+        env:
+          MANUAL_DATE: ${{ inputs.report_date }}
+          MANUAL_NOTIFY: ${{ inputs.notify_instapaper }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ -n "$MANUAL_DATE" ]]; then REPORT_DATE="$MANUAL_DATE"; else REPORT_DATE="$(TZ=Europe/Prague date +%F)"; fi
+          REPORT_DATE="$REPORT_DATE" python -c 'import os; from datetime import date; date.fromisoformat(os.environ["REPORT_DATE"])'
+          if [[ "$EVENT_NAME" == "schedule" ]]; then SHOULD_NOTIFY=true; else SHOULD_NOTIFY="${MANUAL_NOTIFY:-false}"; fi
+          echo "report_date=$REPORT_DATE" >> "$GITHUB_OUTPUT"
+          echo "should_notify=$SHOULD_NOTIFY" >> "$GITHUB_OUTPUT"
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+      - name: Generate briefing
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: openai/gpt-oss-120b
+        run: python scripts/generate_report.py --date "${{ steps.date.outputs.report_date }}" --output site
+      - name: Commit current briefing
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site
+          if git diff --cached --quiet; then echo "Briefing is unchanged."; else git commit -m "briefing: ${{ steps.date.outputs.report_date }}" && git push; fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Send to Instapaper accounts
+        if: needs.build.outputs.should_notify == 'true'
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          REPORT_DATE: ${{ needs.build.outputs.report_date }}
+          RUN_ID: ${{ github.run_id }}
+          INSTAPAPER_USERNAME: ${{ secrets.INSTAPAPER_USERNAME }}
+          INSTAPAPER_PASSWORD: ${{ secrets.INSTAPAPER_PASSWORD }}
+          INSTAPAPER_USERNAME_SECONDARY: ${{ secrets.INSTAPAPER_USERNAME_SECONDARY }}
+          INSTAPAPER_PASSWORD_SECONDARY: ${{ secrets.INSTAPAPER_PASSWORD_SECONDARY }}
+        run: |
+          test -n "$INSTAPAPER_USERNAME" || { echo "Missing INSTAPAPER_USERNAME" >&2; exit 1; }
+          REPORT_URL="${PAGE_URL%/}/index.html?run=${RUN_ID}"
+          send_to_instapaper() {
+            local label="$1" username="$2" password="$3"
+            local status
+            status=$(curl --silent --show-error --output "/tmp/instapaper-${label}.txt" --write-out '%{http_code}' --user "$username:$password" --data-urlencode "url=$REPORT_URL" --data-urlencode "title=Daily World Briefing — $REPORT_DATE" https://www.instapaper.com/api/add)
+            [[ "$status" == "201" ]] || { echo "Instapaper $label returned HTTP $status" >&2; return 1; }
+          }
+          send_to_instapaper primary "$INSTAPAPER_USERNAME" "$INSTAPAPER_PASSWORD"
+          if [[ -n "$INSTAPAPER_USERNAME_SECONDARY" ]]; then send_to_instapaper secondary "$INSTAPAPER_USERNAME_SECONDARY" "$INSTAPAPER_PASSWORD_SECONDARY"; fi
