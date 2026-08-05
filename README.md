@@ -7,7 +7,7 @@ A fully autonomous, no-OpenAI-API daily market summary. GitHub Actions downloads
 - `https://YOUR-USER.github.io/YOUR-REPO/index.html` — the current report, replaced on every run
 - `.../report.json` — metadata for the current report
 - a composite 0–100 score based on VIX, S&P 500 drawdown and realized volatility, high-yield spreads, financial conditions, the 10Y–2Y curve, unemployment momentum, CPI inflation and a Brent oil shock
-- a watchlist table showing each instrument's EUR price, one-day and one-month moves, distance from its trailing 252-session high, and position versus its 50-day average
+- a market watchlist table showing each instrument's EUR price, one-day and one-month moves, distance from its trailing 252-session high, and position versus its 50-day average
 
 The HTML uses a single semantic `<article>`, real headings, lists and a compact table, no JavaScript, no external fonts and no images. This gives Instapaper a clean article to parse and keeps the Kobo version light.
 

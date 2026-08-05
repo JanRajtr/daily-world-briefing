@@ -58,7 +58,7 @@ class GeneratorTests(unittest.TestCase):
         page, _, _ = generator.render_report("2025-01-02", [result], [], "2025-01-02T00:00:00Z")
         self.assertIn("/series/DGS10", page)
         self.assertIn("/series/DGS2", page)
-        self.assertIn("Stock watchlist", page)
+        self.assertIn("Market watchlist", page)
         self.assertNotIn("<style", page)
         self.assertNotIn("<h1", page)
         self.assertIn("Latest: +0.10 pp. Risk: 50/100.", page)
@@ -107,7 +107,14 @@ class GeneratorTests(unittest.TestCase):
         }
         page, _, _ = generator.render_report("2025-01-02", [result], [], "now", [stock])
         self.assertIn("€10.00", page)
-        self.assertLess(page.index("Stock watchlist"), page.index("Main risk drivers"))
+        self.assertLess(page.index("Market watchlist"), page.index("Main risk drivers"))
+
+    def test_requested_csg_and_crypto_symbols_are_configured(self):
+        configured = {instrument.label: instrument.feed_symbol for instrument in generator.WATCHLIST}
+        self.assertEqual(configured["NW0.IBIS2"], "NW0.DE")
+        self.assertEqual(configured["BTC"], "BTC-EUR")
+        self.assertEqual(configured["ADA"], "ADA-EUR")
+        self.assertNotIn("N20.IBIS2", configured)
 
     def test_future_report_date_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

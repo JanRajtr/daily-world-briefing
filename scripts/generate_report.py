@@ -57,8 +57,10 @@ WATCHLIST = (
     Instrument("IWMO.BVME.ETF", "IWMO.MI", "iShares Edge MSCI World Momentum Factor UCITS ETF"),
     Instrument("ZPRV.IBIS2", "ZPRV.DE", "SPDR MSCI USA Small Cap Value Weighted UCITS ETF"),
     Instrument("NVS.IBIS2", "NOT.DE", "Novartis"),
-    Instrument("N20.IBIS2", "NOV.DE", "Novo Nordisk"),
+    Instrument("NW0.IBIS2", "NW0.DE", "Czechoslovak Group (CSG)"),
     Instrument("ASME.IBIS2", "ASME.DE", "ASML Holding"),
+    Instrument("BTC", "BTC-EUR", "Bitcoin"),
+    Instrument("ADA", "ADA-EUR", "Cardano"),
 )
 
 
@@ -263,7 +265,7 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
         f'<td>{r["from_high"]:+.1f}%</td><td>{html.escape(r["trend"])}</td><td>{r["as_of"]}</td>'
         "</tr>" for r in stocks
     )
-    stock_section = "<h2>Stock watchlist</h2>"
+    stock_section = "<h2>Market watchlist</h2>"
     if stock_rows:
         stock_section += (
             '<table><thead><tr><th>Instrument</th><th>Price</th><th>1 day</th><th>1 month</th>'
