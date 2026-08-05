@@ -80,7 +80,7 @@ class GeneratorTests(unittest.TestCase):
             ):
                 generator.main()
             self.assertNotEqual(report.read_text(), "original")
-            self.assertIn("Market Summary", report.read_text())
+            self.assertIn("Market Risk Component", report.read_text())
 
     def test_stock_summary_calculates_euro_watchlist_fields(self):
         rows = [(date(2025, 1, day), 100 + day) for day in range(1, 29)]

@@ -1,4 +1,4 @@
-name: Daily Market Summary
+name: Daily World Briefing
 
 on:
   schedule:
@@ -17,7 +17,7 @@ on:
         type: boolean
 
 concurrency:
-  group: market-risk-pages
+  group: daily-world-briefing-pages
   cancel-in-progress: false
 
 permissions:

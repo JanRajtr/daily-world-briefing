@@ -21,7 +21,7 @@ The HTML uses a single semantic `<article>`, real headings and lists, no JavaScr
    - `INSTAPAPER_USERNAME` — the Instapaper email address or username.
    - `INSTAPAPER_PASSWORD` — the account password. If the account has no password, save an empty value if GitHub permits it; otherwise use any placeholder value, which the Simple API documentation says is accepted for passwordless accounts.
    - Optional second account: `INSTAPAPER_USERNAME_SECONDARY` and `INSTAPAPER_PASSWORD_SECONDARY`. When the secondary username is absent, delivery to the primary account continues normally.
-5. Open **Actions → Daily Market Summary → Run workflow**. Leave the date blank and `Send the published URL to Instapaper` off for the first test.
+5. Open **Actions → Daily World Briefing → Run workflow**. Leave the date blank and `Send the published URL to Instapaper` off for the first test.
 6. When the run is green, open the deployment URL shown in the `deploy` job and verify the article.
 7. Run it once more with `Send the published URL to Instapaper` enabled. Confirm that the article appears in Instapaper and then sync the Instapaper integration on Kobo.
 

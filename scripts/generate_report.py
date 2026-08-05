@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Callable
 
 FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={}"
-USER_AGENT = "market-risk-briefing/1.0 (GitHub Actions; public-data reader)"
+USER_AGENT = "daily-world-briefing/1.0 (GitHub Actions; public-data reader)"
 YAHOO_CHART = "https://query2.finance.yahoo.com/v8/finance/chart/{}"
 
 
@@ -170,7 +170,7 @@ def fetch_chart(symbol: str, report_date: date, retries: int = 3) -> tuple[list[
     query = urllib.parse.urlencode({"period1": int(start.timestamp()), "period2": int(end.timestamp()), "interval": "1d", "events": "history"})
     request = urllib.request.Request(
         f"{YAHOO_CHART.format(urllib.parse.quote(symbol, safe=''))}?{query}",
-        headers={"User-Agent": "Mozilla/5.0 (compatible; market-risk-briefing/1.0)"},
+        headers={"User-Agent": "Mozilla/5.0 (compatible; daily-world-briefing/1.0)"},
     )
     last_error = None
     for attempt in range(retries):
@@ -305,7 +305,7 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
     )
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Market Summary — {report_date}</title><meta name="description" content="Daily market summary and rules-based risk briefing for {report_date}.">
+<title>Market Risk Component — {report_date}</title><meta name="description" content="Rules-based market-risk component for the daily world briefing on {report_date}.">
 </head><body><article>
 <p><strong>Composite risk: {score:.0f}/100 — {label}.</strong> A weighted reading from {len(results)} public market and macro indicators. Higher means more defensive conditions.</p>
 {market_situation}
