@@ -1,18 +1,18 @@
 {
   "date": "2026-08-05",
-  "generated_at": "2026-08-05T09:35:51Z",
+  "generated_at": "2026-08-05T10:06:16Z",
   "market": {
     "date": "2026-08-05",
     "score": 22.242226658791996,
     "label": "Low",
-    "generated_at": "2026-08-05T09:35:42Z"
+    "generated_at": "2026-08-05T10:06:05Z"
   },
   "news": {
     "date": "2026-08-05",
-    "generated_at": "2026-08-05T09:35:51Z",
+    "generated_at": "2026-08-05T10:06:16Z",
     "ai_used": false,
     "model": null,
-    "selected_items": 30,
+    "selected_items": 22,
     "feed_failures": 2
   }
 }
