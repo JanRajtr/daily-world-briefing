@@ -4,7 +4,8 @@ A daily, source-grounded briefing covering:
 
 - the global economy with explicit connections to the market-risk briefing watchlist;
 - consequential global geopolitics;
-- progress in cancer, cardiovascular medicine, eye care, medicines and delivery of care;
+- clinically available or near-available progress in cancer and cardiovascular care;
+- glaucoma care, corneal or eye transplantation, and recovery after ocular accidents or trauma;
 - evidence-based longevity updates when credible human evidence exists.
 
 The project collects public RSS/Atom feeds, ranks and deduplicates recent material, asks Groq's free API (`llama-3.3-70b-versatile`) for a cited synthesis, generates a lightweight static HTML article, deploys it to GitHub Pages and optionally sends it to two Instapaper accounts. If a publisher advertises no working direct feed, a narrowly scoped Google News RSS query is used only to discover pages on that publisher's own domain. If AI is unavailable, the project publishes an extractive source digest instead.
@@ -16,6 +17,7 @@ The project collects public RSS/Atom feeds, ranks and deduplicates recent materi
 - Company releases are retained as valuable primary evidence but are visibly labelled as interested-party sources.
 - Government and military statements are attributed rather than treated as independent verification.
 - Medical stories must state their evidence stage; preliminary findings must not be described as established treatment.
+- Laboratory, animal, preclinical, Phase 1 and Phase 2 developments are excluded from the medical briefing.
 - The report links to every underlying source and contains no medical or investment recommendation.
 
 Configured European sources include the ECB, European Commission, Council of the EU, EMA, NATO, SIPRI, Bruegel, the European Society of Cardiology, Novartis and ASML. US and global sources add FDA, NCI, NEI, Harvard, IMF and BIS coverage. A structured PubMed search adds recent clinical trials, systematic reviews, meta-analyses and guidelines with substantive abstracts for cancer, cardiovascular disease and eye care. Edit `SOURCES` in `scripts/generate_report.py` to add or remove feeds.

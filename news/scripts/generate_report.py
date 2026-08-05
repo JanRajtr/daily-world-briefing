@@ -79,14 +79,15 @@ WATCHLIST_TERMS = {
 
 MEDICAL_TERMS = (
     "cancer", "tumour", "tumor", "oncology", "cardiovascular", "heart", "stroke",
-    "atherosclerosis", "retina", "retinal", "glaucoma", "cataract", "cornea", "vision",
+    "atherosclerosis", "glaucoma", "corneal transplant", "keratoplasty", "ocular trauma", "eye injury",
     "ophthalm", "drug", "medicine", "therapy", "treatment", "diagnostic", "clinical trial",
     "patient care", "gene therapy", "immunotherapy", "longevity", "healthy ageing", "healthy aging",
 )
 MEDICAL_PRIORITY_TERMS = (
-    "approv", "authoris", "authoriz", "clinical trial", "phase 1", "phase 2", "phase 3",
+    "approv", "authoris", "authoriz", "clinical trial", "phase 3", "phase iii",
     "patient", "treatment", "therapy", "medicine", "cancer", "tumour", "tumor", "oncology",
-    "cardiovascular", "heart", "stroke", "retina", "glaucoma", "cataract", "cornea", "vision",
+    "cardiovascular", "heart", "stroke", "glaucoma", "corneal transplant", "keratoplasty",
+    "ocular trauma", "eye injury", "vision recovery", "visual rehabilitation",
     "ophthalm", "diagnos", "survival", "mortality", "prevention", "care", "gene therapy",
     "immunotherapy", "longevity", "ageing", "aging", "health", "safety warning", "recall",
 )
@@ -96,11 +97,22 @@ LOW_VALUE_MEDICAL_TERMS = (
     "emergency preparedness", "learn | fda",
 )
 MEDICAL_ADVANCE_TERMS = (
-    "new ", "novel", "first ", "trial", "phase 1", "phase 2", "phase 3", "randomized",
+    "new ", "novel", "first ", "trial", "phase 3", "phase iii", "randomized",
     "randomised", "approv", "authoris", "authoriz", "improves", "improved", "reduces",
     "reduced", "effective", "efficacy", "treatment", "therapy", "surgery", "surgical",
     "procedure", "diagnostic", "detection", "survival", "remission", "restores", "restored",
     "breakthrough", "guideline", "recommendation", "results", "discovery", "discovers",
+)
+EARLY_RESEARCH_TERMS = (
+    "preclinical", "animal model", "mouse model", "mice", "in vitro", "laboratory study",
+    "phase 1", "phase i ", "phase ia", "phase ib", "phase 2", "phase ii ", "phase iia", "phase iib",
+    "first-in-human", "first in human",
+)
+CLINICALLY_NEAR_TERMS = (
+    "approv", "authoris", "authoriz", "recommend", "guideline", "phase 3", "phase iii",
+    "randomized", "randomised", "systematic review", "meta-analysis", "standard of care",
+    "clinical practice", "treatment", "therapy", "surgery", "surgical", "procedure",
+    "transplant", "keratoplasty", "rehabilitation", "recovery",
 )
 LOW_VALUE_PAGE_TERMS = (
     "arms transfers database", "media library", "daily news ", "site map", "sitemap",
@@ -177,6 +189,19 @@ def classify(source: Source, title: str, summary: str) -> str:
     return source.default_section
 
 
+def in_medical_scope(text: str) -> bool:
+    lowered = text.lower()
+    cancer = any(term in lowered for term in ("cancer", "tumor", "tumour", "oncolog", "neoplasm", "melanoma", "leukemia", "lymphoma"))
+    cardiovascular = any(term in lowered for term in ("cardiovascular", "heart", "cardiac", "stroke", "coronary", "atrial fibrillation", "atherosclerosis"))
+    eye = any(term in lowered for term in (
+        "glaucoma", "corneal transplant", "cornea transplant", "keratoplasty", "whole-eye transplant",
+        "eye transplant", "ocular trauma", "eye injury", "ocular injury", "traumatic vision",
+        "vision recovery after", "visual rehabilitation after",
+    ))
+    longevity = any(term in lowered for term in ("longevity", "healthy ageing", "healthy aging"))
+    return cancer or cardiovascular or eye or longevity
+
+
 def watchlist_matches(text: str) -> list[str]:
     lowered = text.lower()
     return [symbol for symbol, terms in WATCHLIST_TERMS.items() if any(term.lower() in lowered for term in terms)]
@@ -205,9 +230,15 @@ def parse_feed(source: Source, payload: bytes, report_date: date, lookback_days:
         if "warning-letters/" in url.lower() or re.search(r"\b\d{6}\s*-\s*\d{2}/\d{2}/\d{4}\b", title):
             continue
         if section == "medicine":
+            if not in_medical_scope(relevance_text):
+                continue
             if not any(term in relevance_text for term in MEDICAL_PRIORITY_TERMS):
                 continue
             if any(term in relevance_text for term in LOW_VALUE_MEDICAL_TERMS):
+                continue
+            if any(term in relevance_text for term in EARLY_RESEARCH_TERMS):
+                continue
+            if not any(term in relevance_text for term in CLINICALLY_NEAR_TERMS):
                 continue
             if "news.google.com/" in source.url and not any(term in relevance_text for term in MEDICAL_ADVANCE_TERMS):
                 continue
@@ -277,9 +308,14 @@ def parse_pubmed(payload: bytes, report_date: date) -> list[Item]:
             tags.append("cancer")
         if any(term in title_lower for term in ("cardiovascular", "heart", "cardiac", "stroke", "coronary", "atrial fibrillation")):
             tags.append("cardiovascular")
-        if any(term in title_lower for term in ("retina", "glaucoma", "cataract", "cornea", "vision", "ophthalm", "macular")):
+        if any(term in title_lower for term in (
+            "glaucoma", "corneal transplant", "cornea transplant", "keratoplasty", "whole-eye transplant",
+            "eye transplant", "ocular trauma", "eye injury", "ocular injury", "traumatic vision",
+        )):
             tags.append("eye care")
         if not tags:
+            continue
+        if any(term in combined for term in EARLY_RESEARCH_TERMS):
             continue
         evidence = next((value for value in types if value in ("Randomized Controlled Trial", "Clinical Trial", "Meta-Analysis", "Systematic Review", "Practice Guideline")), types[0] if types else "Journal Article")
         tags.extend(("peer reviewed", evidence))
@@ -287,7 +323,10 @@ def parse_pubmed(payload: bytes, report_date: date) -> list[Item]:
         direct_advance = any(term in title_lower for term in (
             "treatment", "therapy", "surgery", "procedure", "diagnos", "detection", "survival",
             "remission", "vaccine", "transplant", "prevention", "drug", "antithrombotic",
+            "intervention", "rehabilitation", "training",
         ))
+        if not direct_advance and evidence != "Practice Guideline":
+            continue
         score = (112 if "Randomized Controlled Trial" in types else 106) + (10 if direct_advance else 0)
         if any(term in title_lower for term in ("caregiver", "survey", "protocol")):
             score -= 12
@@ -302,8 +341,9 @@ def parse_pubmed(payload: bytes, report_date: date) -> list[Item]:
 def fetch_pubmed(report_date: date) -> list[Item]:
     query = (
         '(cancer[Title/Abstract] OR oncology[Title/Abstract] OR cardiovascular[Title/Abstract] '
-        'OR cardiac[Title/Abstract] OR stroke[Title/Abstract] OR retinal[Title/Abstract] '
-        'OR glaucoma[Title/Abstract] OR cataract[Title/Abstract] OR ophthalmology[Title/Abstract]) '
+        'OR cardiac[Title/Abstract] OR stroke[Title/Abstract] OR glaucoma[Title/Abstract] '
+        'OR keratoplasty[Title/Abstract] OR corneal transplant*[Title/Abstract] '
+        'OR ocular trauma[Title/Abstract] OR eye injury[Title/Abstract]) '
         'AND (clinical trial[Publication Type] OR randomized controlled trial[Publication Type] '
         'OR meta-analysis[Publication Type] OR systematic review[Publication Type] '
         'OR practice guideline[Publication Type])'
@@ -358,7 +398,7 @@ def ai_prompt(items: list[Item], report_date: date) -> str:
 Return valid JSON, with no markdown, in this exact shape:
 {{"overview":["..."],"sections":{{"economy":[STORY],"geopolitics":[STORY],"medicine":[STORY]}}}}
 Each STORY is {{"title":"...","summary":"2-3 factual sentences","why_it_matters":"...","item_ids":["id"],"evidence":"label"}}.
-Use 4-6 economy stories, 4-6 geopolitics stories, and 5-8 medicine stories when material permits. Merge records about the same event and cite all their IDs. Never add a fact absent from the records. Treat company and government claims as attributed claims, not independent confirmation. For medicine, state the evidence stage (laboratory/animal, early human, Phase 2, Phase 3, regulatory decision, review/guideline, or unclear) and never call something a cure unless the records justify it. Favor cancer, cardiovascular disease, eye care, improvements in care, new medicines, and credible human longevity evidence. For economy, explain relevant watchlist connections without forecasting prices. For geopolitics, distinguish decisions from proposals and contested claims. If evidence is thin, omit the story.
+Use 4-6 economy stories, 4-6 geopolitics stories, and 5-8 medicine stories when material permits. Merge records about the same event and cite all their IDs. Never add a fact absent from the records. Treat company and government claims as attributed claims, not independent confirmation. Include medical developments only when care is publicly available or plausibly close to availability: regulatory decisions, guidelines, established procedures, Phase 3 evidence, or strong reviews of clinical care. Exclude laboratory, animal, preclinical, Phase 1 and Phase 2 work. Medical scope is new methods and progress in cancer or cardiovascular care; for eyes, include only glaucoma, corneal/eye transplantation, or recovery and rehabilitation after ocular accidents or trauma. State the evidence stage and never call something a cure unless the records justify it. For economy, explain relevant watchlist connections without forecasting prices. For geopolitics, distinguish decisions from proposals and contested claims. If evidence is thin, omit the story.
 RECORDS:
 {json.dumps(records, ensure_ascii=False)}"""
 

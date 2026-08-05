@@ -50,12 +50,27 @@ class GeneratorTests(unittest.TestCase):
 
     def test_keeps_detailed_medical_advance(self):
         source = generator.Source("EMA", "https://example.test/feed", "medicine", "regulator", "Europe")
-        payload = b'''<rss><channel><item><title>EMA recommends new therapy for retinal disease</title>
-        <link>https://example.test/retina</link><pubDate>Wed, 05 Aug 2026 10:00:00 GMT</pubDate>
-        <description>A phase 3 trial in 700 patients found improved visual function compared with standard care.</description></item></channel></rss>'''
+        payload = b'''<rss><channel><item><title>EMA recommends new glaucoma treatment</title>
+        <link>https://example.test/glaucoma</link><pubDate>Wed, 05 Aug 2026 10:00:00 GMT</pubDate>
+        <description>A phase 3 trial in 700 patients found improved control compared with standard care.</description></item></channel></rss>'''
         items = generator.parse_feed(source, payload, date(2026, 8, 5))
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0].section, "medicine")
+
+    def test_eye_scope_rejects_general_retinal_news_and_early_trials(self):
+        source = generator.Source("Journal", "https://example.test/feed", "medicine", "university", "Europe")
+        retinal = b'''<rss><channel><item><title>New retinal imaging method</title>
+        <link>https://example.test/retina</link><pubDate>Wed, 05 Aug 2026 10:00:00 GMT</pubDate>
+        <description>A clinical trial describes a novel retinal imaging technique.</description></item></channel></rss>'''
+        self.assertEqual(generator.parse_feed(source, retinal, date(2026, 8, 5)), [])
+        early = b'''<rss><channel><item><title>Phase 1 cancer vaccine trial</title>
+        <link>https://example.test/cancer</link><pubDate>Wed, 05 Aug 2026 10:00:00 GMT</pubDate>
+        <description>A first-in-human cancer study reports preliminary safety findings.</description></item></channel></rss>'''
+        self.assertEqual(generator.parse_feed(source, early, date(2026, 8, 5)), [])
+
+    def test_medical_scope_accepts_ocular_trauma_recovery(self):
+        self.assertTrue(generator.in_medical_scope("New surgical method for vision recovery after ocular trauma"))
+        self.assertFalse(generator.in_medical_scope("New treatment for routine cataract care"))
 
     def test_parses_pubmed_abstract_and_evidence_type(self):
         payload = b'''<PubmedArticleSet><PubmedArticle><MedlineCitation><PMID>12345</PMID>
