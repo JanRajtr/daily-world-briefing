@@ -48,7 +48,7 @@ SOURCES = (
     Source("Council of the European Union", "https://news.google.com/rss/search?q=site%3Aconsilium.europa.eu%2Fen%2Fpress%2Fpress-releases+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "geopolitics", "official", "Europe", tags=("EU", "sanctions", "security")),
     Source("NATO", "https://news.google.com/rss/search?q=site%3Anato.int%2Fcps%2Fen%2Fnatohq%2Fnews+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "geopolitics", "official", "Europe", tags=("NATO", "security", "defence")),
     Source("SIPRI", "https://news.google.com/rss/search?q=site%3Asipri.org+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "geopolitics", "independent-analysis", "Europe", tags=("security", "defence")),
-    Source("Bruegel", "https://www.bruegel.org/rss.xml", "economy", "independent-analysis", "Europe", tags=("EU", "macro", "trade")),
+    Source("Bruegel", "https://news.google.com/rss/search?q=site%3Abruegel.org+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "economy", "independent-analysis", "Europe", tags=("EU", "macro", "trade")),
     Source("European Medicines Agency — news", "https://www.ema.europa.eu/en/news.xml", "medicine", "regulator", "Europe", tags=("approval", "safety", "medicine")),
     Source("European Medicines Agency — new medicines", "https://www.ema.europa.eu/en/new-human-medicine-new.xml", "medicine", "regulator", "Europe", tags=("approval", "medicine")),
     Source("US FDA — drugs", "https://www.fda.gov/AboutFDA/ContactFDA/StayInformed/RSSFeeds/Drugs/rss.xml", "medicine", "regulator", "United States", tags=("approval", "safety", "medicine")),
