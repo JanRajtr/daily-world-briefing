@@ -64,6 +64,16 @@ class MergeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "recipe is incomplete"):
             merger.validate_daily_content(content)
 
+    def test_omits_economy_component_when_it_has_no_items(self):
+        page = merger.merge_pages(
+            "<article><h2>Market situation</h2></article>",
+            "<article><p><strong>Daily Economy Briefing — 2026-08-05.</strong></p><h2>Global economy and portfolio</h2></article>",
+            "2026-08-05", [], None, False,
+        )
+        self.assertNotIn("Economy news", page)
+        self.assertNotIn("Global economy and portfolio", page)
+        self.assertIn("Market situation", page)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -110,8 +110,8 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("One day: +1.0%. One month: +2.0%.", page)
         self.assertNotIn("Above 50-day avg. As of", page)
         self.assertNotIn("<table", page)
-        self.assertLess(page.index("Composite risk"), page.index("Market situation"))
-        self.assertLess(page.index("Market situation"), page.index("Market watchlist"))
+        self.assertLess(page.index("Market situation"), page.index("Composite risk"))
+        self.assertLess(page.index("Composite risk"), page.index("Market watchlist"))
         self.assertGreater(page.index("Report date"), page.index("Sources"))
         self.assertLess(page.index("Market watchlist"), page.index("Main risk drivers"))
 

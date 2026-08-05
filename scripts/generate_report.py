@@ -307,8 +307,8 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Market Risk Component — {report_date}</title><meta name="description" content="Rules-based market-risk component for the daily world briefing on {report_date}.">
 </head><body><article>
-<p><strong>Composite risk: {score:.0f}/100 — {label}.</strong> A weighted reading from {len(results)} public market and macro indicators. Higher means more defensive conditions.</p>
 {market_situation}
+<p><strong>Composite risk: {score:.0f}/100 — {label}.</strong> A weighted reading from {len(results)} public market and macro indicators. Higher means more defensive conditions.</p>
 {stock_section}
 {warning}
 <h2>Main risk drivers</h2><ol>{driver_items}</ol>

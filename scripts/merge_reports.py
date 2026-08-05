@@ -182,16 +182,18 @@ def wellbeing_sections(report_date: str, weather: list[dict], content: dict) -> 
 <p><small>Food and longevity content is general information, not individualized medical or nutritional advice.</small></p>'''
 
 
-def merge_pages(market_page: str, news_page: str, report_date: str, weather: list[dict] | None = None, daily_content: dict | None = None) -> str:
+def merge_pages(market_page: str, news_page: str, report_date: str, weather: list[dict] | None = None, daily_content: dict | None = None, include_news: bool = True) -> str:
     market = article_body(market_page)
-    news = article_body(news_page)
-    news = re.sub(
-        r'^\s*<p><strong>Daily (?:World|Economy) Briefing.*?</p>',
-        "<h2>Economy news</h2>",
-        news,
-        count=1,
-        flags=re.DOTALL | re.IGNORECASE,
-    )
+    news = ""
+    if include_news:
+        news = article_body(news_page)
+        news = re.sub(
+            r'^\s*<p><strong>Daily (?:World|Economy) Briefing.*?</p>',
+            "<h2>Economy news</h2>",
+            news,
+            count=1,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
     safe_date = html.escape(report_date)
     content = validate_daily_content(daily_content) if daily_content is not None else fallback_daily_content(report_date)
     reflection = daily_reflection(report_date, content["reflection"])
@@ -238,7 +240,7 @@ def main() -> None:
     page = merge_pages(
         (market_dir / "index.html").read_text(encoding="utf-8"),
         (news_dir / "index.html").read_text(encoding="utf-8"),
-        market_meta["date"], weather, daily_content,
+        market_meta["date"], weather, daily_content, news_meta.get("selected_items", 0) > 0,
     )
     (output / "index.html").write_text(page, encoding="utf-8")
     combined = {
