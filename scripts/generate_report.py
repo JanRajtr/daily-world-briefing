@@ -156,22 +156,22 @@ def fmt(value, unit):
 def render_report(report_date, results, failures, generated_at):
     total_weight = sum(r["weight"] for r in results)
     score = sum(r["score"] * r["weight"] for r in results) / total_weight
-    label, cls = risk_label(score)
+    label, _ = risk_label(score)
     sorted_risk = sorted(results, key=lambda r: r["score"], reverse=True)
     drivers = sorted_risk[:3]
     positives = sorted(results, key=lambda r: r["score"])[:2]
     freshest = max(r["as_of"] for r in results)
     oldest = min(r["as_of"] for r in results)
     metric_items = "".join(
-        f'<li><strong>{html.escape(r["name"])}</strong><br>'
-        f'Latest: {fmt(r["value"], r["unit"])} · Risk: {r["score"]:.0f}/100<br>'
-        f'<small>As of {r["as_of"]}</small></li>' for r in results
+        f'<li><strong>{html.escape(r["name"])}.</strong> '
+        f'Latest: {fmt(r["value"], r["unit"])}. Risk: {r["score"]:.0f}/100. '
+        f'As of {r["as_of"]}.</li>' for r in results
     )
     driver_items = "".join(f'<li><strong>{html.escape(r["name"])}</strong>: {r["score"]:.0f}/100 — {html.escape(r["note"])}</li>' for r in drivers)
     positive_items = "".join(f'<li><strong>{html.escape(r["name"])}</strong>: {r["score"]:.0f}/100</li>' for r in positives)
     warning = ""
     if failures:
-        warning = '<aside class="warning"><strong>Partial data:</strong> ' + html.escape("; ".join(failures)) + "</aside>"
+        warning = '<p><strong>Partial data:</strong> ' + html.escape("; ".join(failures)) + "</p>"
     source_items = "".join(
         f'<li>{html.escape(r["name"])} — {html.escape(r["source_label"])} ('
         + ", ".join(
@@ -184,23 +184,16 @@ def render_report(report_date, results, failures, generated_at):
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Market Risk Briefing — {report_date}</title><meta name="description" content="Daily rules-based market risk briefing for {report_date}.">
-<style>
-:root{{--ink:#182026;--muted:#5a6770;--paper:#fff;--line:#d9e0e4;--accent:#173f5f;--low:#277a51;--guarded:#7c6b17;--elevated:#a85b0b;--high:#a12b2b;--severe:#671616}}
-*{{box-sizing:border-box}} body{{margin:0;background:#f4f1ea;color:var(--ink);font:18px/1.62 Georgia,serif}}
-article{{max-width:760px;margin:0 auto;background:var(--paper);padding:3.2rem 3rem 4rem}} h1,h2{{font-family:system-ui,sans-serif;line-height:1.18}} h1{{font-size:2.15rem;margin:.2rem 0}} h2{{font-size:1.35rem;margin-top:2.2rem;border-bottom:1px solid var(--line);padding-bottom:.35rem}}
-.kicker,.meta{{font-family:system-ui,sans-serif;color:var(--muted);font-size:.86rem;letter-spacing:.03em}} .score{{border-left:.55rem solid var(--{cls});padding:.8rem 1.1rem;margin:1.6rem 0;background:#f7f8f8}}
-.score h2{{border:0;margin:0 0 .5rem;padding:0;font-size:1rem}} .score strong{{font:700 1.8rem/1.2 system-ui,sans-serif;color:var(--{cls})}} .indicators{{list-style:none;margin:0;padding:0}} .indicators li{{border-bottom:1px solid var(--line);padding:.75rem 0}} .indicators small{{color:var(--muted)}} .warning{{background:#fff4d8;padding:.8rem 1rem;border:1px solid #e9cf86}} a{{color:var(--accent)}} footer{{color:var(--muted);font-size:.82rem;margin-top:2.5rem;border-top:1px solid var(--line);padding-top:1rem}}
-@media(max-width:620px){{article{{padding:1.5rem 1.05rem 2.5rem}}body{{font-size:17px}}h1{{font-size:1.75rem}}.score strong{{font-size:1.45rem}}}}
-</style></head><body><article>
-<header><div class="kicker">DAILY • RULES-BASED • NO AI</div><h1>Market Risk Briefing</h1><p class="meta">{report_date} · Data observations {oldest} to {freshest}</p></header>
-<section class="score" aria-label="Overall risk score"><h2>Composite risk</h2><p><strong>{score:.0f}/100 — {label}</strong></p><p>A weighted reading from {len(results)} public market and macro indicators. Higher means more defensive conditions.</p></section>
+</head><body><article>
+<p><strong>Report date:</strong> {report_date}. Data observations range from {oldest} to {freshest}.</p>
+<p><strong>Composite risk: {score:.0f}/100 — {label}.</strong> A weighted reading from {len(results)} public market and macro indicators. Higher means more defensive conditions.</p>
 {warning}
 <h2>Main risk drivers</h2><ol>{driver_items}</ol>
 <h2>Relative stabilizers</h2><ul>{positive_items}</ul>
-<h2>Indicator dashboard</h2><ul class="indicators">{metric_items}</ul>
+<h2>Indicator dashboard</h2><ul>{metric_items}</ul>
 <h2>How to read this</h2><p>This is a mechanical monitoring signal, not a forecast or investment recommendation. Scores use fixed threshold bands and are reweighted across available indicators. Monthly and weekly series update less often than market prices.</p>
 <h2>Sources</h2><ul>{source_items}</ul>
-<footer>Generated {generated_at} UTC. Public observations are downloaded from FRED. Methodology and thresholds are documented in the repository README.</footer>
+<p>Generated {generated_at} UTC. Public observations are downloaded from FRED. Methodology and thresholds are documented in the repository README.</p>
 </article></body></html>''', score, label
 
 

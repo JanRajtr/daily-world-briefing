@@ -59,8 +59,9 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("/series/DGS10", page)
         self.assertIn("/series/DGS2", page)
         self.assertNotIn("<table", page)
-        self.assertIn('class="indicators"', page)
-        self.assertIn("Latest: +0.10 pp · Risk: 50/100", page)
+        self.assertNotIn("<style", page)
+        self.assertNotIn("<h1", page)
+        self.assertIn("Latest: +0.10 pp. Risk: 50/100.", page)
 
     def test_existing_report_is_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
