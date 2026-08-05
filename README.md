@@ -1,6 +1,6 @@
-# Daily Market Summary
+# Daily Market & World Briefing
 
-A fully autonomous, no-OpenAI-API daily market summary. GitHub Actions downloads public observations, computes a transparent weighted risk score, adds a EUR-denominated instrument watchlist, creates a Kobo/Instapaper-friendly static HTML article, deploys it to GitHub Pages, and optionally submits it to Instapaper.
+A fully autonomous combined briefing. GitHub Actions computes the transparent market-risk score and EUR watchlist, collects reputable public sources for the global economy, geopolitics and medical progress, uses Groq for a source-grounded synthesis, creates one Kobo/Instapaper-friendly static article, deploys it to GitHub Pages, and optionally submits it to Instapaper. When Groq is unavailable, the news component uses a deterministic source-excerpt fallback.
 
 ## What it produces
 
@@ -17,6 +17,7 @@ The HTML uses a single semantic `<article>`, real headings and lists, no JavaScr
 2. Upload the *contents* of this bundle to the repository root (so `.github/workflows/daily-briefing.yml` is at that exact path) and commit to the default branch.
 3. Open **Settings → Pages**. Under **Build and deployment → Source**, choose **GitHub Actions**.
 4. Open **Settings → Secrets and variables → Actions → New repository secret** and add:
+   - `GROQ_API_KEY` — a Groq API key used for the source-grounded world-news synthesis.
    - `INSTAPAPER_USERNAME` — the Instapaper email address or username.
    - `INSTAPAPER_PASSWORD` — the account password. If the account has no password, save an empty value if GitHub permits it; otherwise use any placeholder value, which the Simple API documentation says is accepted for passwordless accounts.
    - Optional second account: `INSTAPAPER_USERNAME_SECONDARY` and `INSTAPAPER_PASSWORD_SECONDARY`. When the secondary username is absent, delivery to the primary account continues normally.

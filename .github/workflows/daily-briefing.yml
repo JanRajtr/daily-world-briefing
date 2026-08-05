@@ -60,10 +60,21 @@ jobs:
           echo "should_notify=$SHOULD_NOTIFY" >> "$GITHUB_OUTPUT"
 
       - name: Run tests
-        run: python -m unittest discover -s tests -v
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest discover -s news/tests -v
 
-      - name: Generate rolling daily report
-        run: python scripts/generate_report.py --date "${{ steps.date.outputs.report_date }}" --output site
+      - name: Generate market component
+        run: python scripts/generate_report.py --date "${{ steps.date.outputs.report_date }}" --output work/market
+
+      - name: Generate world-news component
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: openai/gpt-oss-120b
+        run: python news/scripts/generate_report.py --date "${{ steps.date.outputs.report_date }}" --output work/news
+
+      - name: Merge into one daily report
+        run: python scripts/merge_reports.py --market work/market --news work/news --output site
 
       - name: Commit daily report
         run: |
@@ -133,7 +144,7 @@ jobs:
             status=$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
               --user "$username:$password" \
               --data-urlencode "url=$REPORT_URL" \
-              --data-urlencode "title=Market Summary — $REPORT_DATE" \
+              --data-urlencode "title=Daily Market & World Briefing — $REPORT_DATE" \
               https://www.instapaper.com/api/add)
             if [[ "$status" != "201" ]]; then
               echo "Instapaper ${account_label} account returned HTTP $status" >&2
