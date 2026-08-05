@@ -1,5 +1,5 @@
 [
-  {"name":"Horoměřice","condition":"Partly cloudy","minimum_c":15,"maximum_c":25,"rain_probability":20,"wind_kmh":16,"sunrise":"05:32","sunset":"20:36"},
-  {"name":"Prague","condition":"Mostly clear","minimum_c":16,"maximum_c":26,"rain_probability":15,"wind_kmh":14,"sunrise":"05:31","sunset":"20:35"},
-  {"name":"Česká Lípa","condition":"Light showers","minimum_c":14,"maximum_c":23,"rain_probability":45,"wind_kmh":18,"sunrise":"05:29","sunset":"20:39"}
+  {"name":"Horoměřice","condition":"Partly cloudy","minimum_c":15,"maximum_c":25,"rain_probability":20,"rain_mm":0.2,"wind_kmh":16,"sunrise":"05:32","sunset":"20:36"},
+  {"name":"Prague","condition":"Mostly clear","minimum_c":16,"maximum_c":26,"rain_probability":15,"rain_mm":0.0,"wind_kmh":14,"sunrise":"05:31","sunset":"20:35"},
+  {"name":"Česká Lípa","condition":"Light showers","minimum_c":14,"maximum_c":23,"rain_probability":45,"rain_mm":1.8,"wind_kmh":18,"sunrise":"05:29","sunset":"20:39"}
 ]

@@ -13,7 +13,7 @@ class MergeTests(unittest.TestCase):
     def test_combines_both_articles_into_one_semantic_article(self):
         market = "<html><body><article><p>Market component</p></article></body></html>"
         news = "<html><body><article><p><strong>Daily World Briefing — 2026-08-05.</strong> Intro.</p><h2>Today in brief</h2></article></body></html>"
-        weather = [{"name": "Horoměřice", "condition": "Clear", "minimum_c": 15, "maximum_c": 25, "rain_probability": 10, "wind_kmh": 12, "sunrise": "05:32", "sunset": "20:36"}]
+        weather = [{"name": "Horoměřice", "condition": "Clear", "minimum_c": 15, "maximum_c": 25, "rain_probability": 10, "rain_mm": 0.4, "wind_kmh": 12, "sunrise": "05:32", "sunset": "20:36"}]
         page = merger.merge_pages(market, news, "2026-08-05", weather)
         self.assertEqual(page.count("<article>"), 1)
         self.assertIn("Market component", page)
@@ -25,9 +25,14 @@ class MergeTests(unittest.TestCase):
         self.assertIn("Today in brief", page)
         self.assertNotIn("Daily World Briefing — 2026-08-05.</strong> Intro", page)
         self.assertIn("Today's weather", page)
+        self.assertIn("Rain forecast:</strong> 10% chance, 0.4 mm expected", page)
         self.assertIn("Horoměřice", page)
         self.assertIn("Healthy and tasty menu", page)
         self.assertIn("Longevity tip of the day", page)
+        self.assertLess(page.index("Daily reflection"), page.index("Today's weather"))
+        self.assertLess(page.index("Today's weather"), page.index("Healthy and tasty menu"))
+        self.assertLess(page.index("Healthy and tasty menu"), page.index("Longevity tip of the day"))
+        self.assertLess(page.index("Longevity tip of the day"), page.index("Market component"))
         self.assertTrue(page.index("Have a nice, calm, happy and safe day!") > page.index("Longevity tip of the day"))
 
     def test_rejects_page_without_article(self):

@@ -109,11 +109,11 @@ def article_body(page: str) -> str:
 
 
 def fetch_weather_location(name: str, latitude: float, longitude: float, report_date: str) -> dict:
-    query = urllib.parse.urlencode({"latitude": latitude, "longitude": longitude, "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset", "timezone": "Europe/Prague", "start_date": report_date, "end_date": report_date})
+    query = urllib.parse.urlencode({"latitude": latitude, "longitude": longitude, "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,sunrise,sunset", "timezone": "Europe/Prague", "start_date": report_date, "end_date": report_date})
     request = urllib.request.Request(f"{WEATHER_URL}?{query}", headers={"User-Agent": "daily-world-briefing/1.0"})
     with urllib.request.urlopen(request, timeout=30) as response:
         daily = json.loads(response.read())["daily"]
-    return {"name": name, "condition": WEATHER_CODES.get(int(daily["weather_code"][0]), "Mixed conditions"), "minimum_c": round(float(daily["temperature_2m_min"][0])), "maximum_c": round(float(daily["temperature_2m_max"][0])), "rain_probability": round(float(daily["precipitation_probability_max"][0])), "wind_kmh": round(float(daily["wind_speed_10m_max"][0])), "sunrise": daily["sunrise"][0].rsplit("T", 1)[-1], "sunset": daily["sunset"][0].rsplit("T", 1)[-1]}
+    return {"name": name, "condition": WEATHER_CODES.get(int(daily["weather_code"][0]), "Mixed conditions"), "minimum_c": round(float(daily["temperature_2m_min"][0])), "maximum_c": round(float(daily["temperature_2m_max"][0])), "rain_probability": round(float(daily["precipitation_probability_max"][0])), "rain_mm": round(float(daily["precipitation_sum"][0]), 1), "wind_kmh": round(float(daily["wind_speed_10m_max"][0])), "sunrise": daily["sunrise"][0].rsplit("T", 1)[-1], "sunset": daily["sunset"][0].rsplit("T", 1)[-1]}
 
 
 def fetch_weather(report_date: str) -> list[dict]:
@@ -170,7 +170,7 @@ Write in clear English for one adult in Czechia. Make the menu healthy, tasty, p
 
 
 def wellbeing_sections(report_date: str, weather: list[dict], content: dict) -> str:
-    weather_items = "".join(f'<li><h3>{html.escape(item["name"])}</h3><p>{html.escape(item["condition"])}. {item["minimum_c"]}–{item["maximum_c"]}°C; precipitation up to {item["rain_probability"]}%; wind up to {item["wind_kmh"]} km/h. Sunrise {html.escape(item["sunrise"])}; sunset {html.escape(item["sunset"])}.</p></li>' for item in weather)
+    weather_items = "".join(f'<li><h3>{html.escape(item["name"])}</h3><p>{html.escape(item["condition"])}. {item["minimum_c"]}–{item["maximum_c"]}°C. <strong>Rain forecast:</strong> {item["rain_probability"]}% chance, {item.get("rain_mm", 0)} mm expected. Wind up to {item["wind_kmh"]} km/h. Sunrise {html.escape(item["sunrise"])}; sunset {html.escape(item["sunset"])}.</p></li>' for item in weather)
     if not weather_items:
         weather_items = "<li>Today's forecast is temporarily unavailable.</li>"
     meal_items = "".join(f'<li><h3>{html.escape(item["meal"])}: {html.escape(item["name"])}</h3><p>{html.escape(item["recipe"])}</p></li>' for item in content["meals"])
@@ -202,9 +202,9 @@ def merge_pages(market_page: str, news_page: str, report_date: str, weather: lis
 <meta name="description" content="Daily market risk, portfolio, economy, local weather, recipes and healthy-ageing briefing.">
 </head><body><article>
 {reflection}
+{wellbeing}
 {market}
 {news}
-{wellbeing}
 <p><strong>Have a nice, calm, happy and safe day!</strong></p>
 </article></body></html>'''
 
