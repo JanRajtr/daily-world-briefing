@@ -239,6 +239,30 @@ def fmt(value, unit):
     return f"{value:+.2f}{suffix}" if value < 0 or unit == " pp" else f"{value:.2f}{suffix}"
 
 
+def render_market_situation(stocks):
+    if not stocks:
+        return "<h2>Market situation</h2><p>Watchlist data is unavailable.</p>"
+    total = len(stocks)
+    day_up = sum(r["day"] > 0 for r in stocks)
+    day_down = sum(r["day"] < 0 for r in stocks)
+    month_up = sum(r["month"] > 0 for r in stocks)
+    month_down = sum(r["month"] < 0 for r in stocks)
+    above_trend = sum(r["trend"].startswith("Above") for r in stocks)
+    best = max(stocks, key=lambda r: r["month"])
+    worst = min(stocks, key=lambda r: r["month"])
+    return (
+        "<h2>Market situation</h2><p>"
+        f"One day: {day_up} of {total} instruments rose and {day_down} fell; "
+        f"the median move was {statistics.median(r['day'] for r in stocks):+.1f}%. "
+        f"One month: {month_up} rose and {month_down} fell; "
+        f"the median move was {statistics.median(r['month'] for r in stocks):+.1f}%. "
+        f"{above_trend} of {total} are above their 50-day average, and the median instrument is "
+        f"{statistics.median(r['from_high'] for r in stocks):+.1f}% from its 52-week high. "
+        f"Strongest over one month: {html.escape(best['label'])} ({best['month']:+.1f}%). "
+        f"Weakest: {html.escape(worst['label'])} ({worst['month']:+.1f}%).</p>"
+    )
+
+
 def render_report(report_date, results, failures, generated_at, stocks=(), stock_failures=()):
     total_weight = sum(r["weight"] for r in results)
     score = sum(r["score"] * r["weight"] for r in results) / total_weight
@@ -261,9 +285,10 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
     stock_items = "".join(
         f'<li><strong>{html.escape(r["label"])} — {html.escape(r["name"])}</strong><br>'
         f'Price: €{r["price"]:,.2f}. One day: {r["day"]:+.1f}%. One month: {r["month"]:+.1f}%. '
-        f'From 52-week high: {r["from_high"]:+.1f}%. {html.escape(r["trend"])} As of {r["as_of"]}.</li>'
+        f'From 52-week high: {r["from_high"]:+.1f}%. {html.escape(r["trend"])}</li>'
         for r in stocks
     )
+    market_situation = render_market_situation(stocks)
     stock_section = "<h2>Market watchlist</h2>"
     if stock_items:
         stock_section += f'<ul>{stock_items}</ul>'
@@ -282,8 +307,8 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Market Summary — {report_date}</title><meta name="description" content="Daily market summary and rules-based risk briefing for {report_date}.">
 </head><body><article>
-<p><strong>Report date:</strong> {report_date}. Data observations range from {oldest} to {freshest}.</p>
 <p><strong>Composite risk: {score:.0f}/100 — {label}.</strong> A weighted reading from {len(results)} public market and macro indicators. Higher means more defensive conditions.</p>
+{market_situation}
 {stock_section}
 {warning}
 <h2>Main risk drivers</h2><ol>{driver_items}</ol>
@@ -292,6 +317,7 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
 <h2>How to read this</h2><p>This is a mechanical monitoring signal, not a forecast or investment recommendation. Scores use fixed threshold bands and are reweighted across available indicators. Monthly and weekly series update less often than market prices.</p>
 <h2>Sources</h2><ul>{source_items}</ul>
 <p>Generated {generated_at} UTC. Risk observations are downloaded from FRED. Watchlist prices come from Yahoo Finance's chart feed; XAU uses COMEX gold converted to euros with EUR/USD. Methodology and thresholds are documented in the repository README.</p>
+<p><strong>Report date:</strong> {report_date}. Risk data observations range from {oldest} to {freshest}.</p>
 </article></body></html>''', score, label
 
 

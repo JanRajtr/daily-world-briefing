@@ -108,8 +108,25 @@ class GeneratorTests(unittest.TestCase):
         page, _, _ = generator.render_report("2025-01-02", [result], [], "now", [stock])
         self.assertIn("€10.00", page)
         self.assertIn("One day: +1.0%. One month: +2.0%.", page)
+        self.assertNotIn("Above 50-day avg. As of", page)
         self.assertNotIn("<table", page)
+        self.assertLess(page.index("Composite risk"), page.index("Market situation"))
+        self.assertLess(page.index("Market situation"), page.index("Market watchlist"))
+        self.assertGreater(page.index("Report date"), page.index("Sources"))
         self.assertLess(page.index("Market watchlist"), page.index("Main risk drivers"))
+
+    def test_market_situation_summarizes_watchlist_breadth_and_extremes(self):
+        stocks = [
+            {"label": "A", "day": 2, "month": 5, "from_high": -1, "trend": "Above 50-day avg."},
+            {"label": "B", "day": -1, "month": -4, "from_high": -9, "trend": "Below 50-day avg."},
+            {"label": "C", "day": 1, "month": 2, "from_high": -3, "trend": "Above 50-day avg."},
+        ]
+        summary = generator.render_market_situation(stocks)
+        self.assertIn("2 of 3 instruments rose and 1 fell", summary)
+        self.assertIn("the median move was +1.0%", summary)
+        self.assertIn("2 of 3 are above their 50-day average", summary)
+        self.assertIn("Strongest over one month: A (+5.0%)", summary)
+        self.assertIn("Weakest: B (-4.0%)", summary)
 
     def test_requested_csg_and_crypto_symbols_are_configured(self):
         configured = {instrument.label: instrument.feed_symbol for instrument in generator.WATCHLIST}
