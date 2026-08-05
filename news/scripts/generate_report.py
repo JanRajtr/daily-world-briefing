@@ -340,7 +340,7 @@ def deduplicate(items: list[Item]) -> list[Item]:
 
 
 def select_items(items: list[Item], limits: dict[str, int] | None = None) -> list[Item]:
-    limits = limits or {"economy": 12, "geopolitics": 12, "medicine": 18}
+    limits = limits or {"economy": 8, "geopolitics": 8, "medicine": 10}
     selected = []
     for section in SECTIONS:
         candidates = [item for item in items if item.section == section]
@@ -349,7 +349,11 @@ def select_items(items: list[Item], limits: dict[str, int] | None = None) -> lis
 
 
 def ai_prompt(items: list[Item], report_date: date) -> str:
-    records = [{key: value for key, value in asdict(item).items() if key not in ("score",)} for item in items]
+    records = []
+    for item in items:
+        record = {key: value for key, value in asdict(item).items() if key not in ("score",)}
+        record["summary"] = record["summary"][:900]
+        records.append(record)
     return f"""Create a concise English daily briefing for {report_date.isoformat()} using ONLY the supplied records.
 Return valid JSON, with no markdown, in this exact shape:
 {{"overview":["..."],"sections":{{"economy":[STORY],"geopolitics":[STORY],"medicine":[STORY]}}}}
@@ -363,6 +367,7 @@ def call_groq(items: list[Item], report_date: date, api_key: str, model: str) ->
     payload = json.dumps({
         "model": model,
         "temperature": 0.1,
+        "max_completion_tokens": 2800,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": "You are a careful news editor. Ground every statement in supplied records."},
@@ -484,7 +489,7 @@ def main() -> None:
     parser.add_argument("--output", default="site")
     parser.add_argument("--fixture", help="Offline JSON item fixture")
     parser.add_argument("--no-ai", action="store_true", help="Force deterministic extractive output")
-    parser.add_argument("--model", default=os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"))
+    parser.add_argument("--model", default=os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"))
     args = parser.parse_args()
     report_date = date.fromisoformat(args.date)
     if report_date > date.today():
@@ -523,6 +528,8 @@ def main() -> None:
         except (urllib.error.URLError, TimeoutError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
             if isinstance(exc, urllib.error.HTTPError) and exc.code == 401:
                 failures.append("AI summarization unavailable: Groq rejected GROQ_API_KEY (HTTP 401); replace the repository secret")
+            elif isinstance(exc, urllib.error.HTTPError) and exc.code == 413:
+                failures.append("AI summarization unavailable: Groq rejected an oversized request (HTTP 413)")
             else:
                 failures.append(f"AI summarization unavailable: {exc}")
             briefing = fallback_briefing(items)

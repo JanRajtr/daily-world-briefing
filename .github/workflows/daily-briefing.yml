@@ -70,7 +70,7 @@ jobs:
       - name: Generate world-news component
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GROQ_MODEL: openai/gpt-oss-120b
+          GROQ_MODEL: llama-3.3-70b-versatile
         run: python news/scripts/generate_report.py --date "${{ steps.date.outputs.report_date }}" --output work/news
 
       - name: Merge into one daily report

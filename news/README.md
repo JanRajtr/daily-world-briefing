@@ -7,7 +7,7 @@ A daily, source-grounded briefing covering:
 - progress in cancer, cardiovascular medicine, eye care, medicines and delivery of care;
 - evidence-based longevity updates when credible human evidence exists.
 
-The project collects public RSS/Atom feeds, ranks and deduplicates recent material, asks Groq's free API for a cited synthesis, generates a lightweight static HTML article, deploys it to GitHub Pages and optionally sends it to two Instapaper accounts. If a publisher advertises no working direct feed, a narrowly scoped Google News RSS query is used only to discover pages on that publisher's own domain. If AI is unavailable, the project publishes an extractive source digest instead.
+The project collects public RSS/Atom feeds, ranks and deduplicates recent material, asks Groq's free API (`llama-3.3-70b-versatile`) for a cited synthesis, generates a lightweight static HTML article, deploys it to GitHub Pages and optionally sends it to two Instapaper accounts. If a publisher advertises no working direct feed, a narrowly scoped Google News RSS query is used only to discover pages on that publisher's own domain. If AI is unavailable, the project publishes an extractive source digest instead.
 
 ## Editorial safeguards
 

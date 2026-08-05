@@ -82,6 +82,25 @@ class GeneratorTests(unittest.TestCase):
         clean = generator.validate_briefing(briefing, [item])
         self.assertEqual(clean["sections"]["economy"], [])
 
+    def test_ai_prompt_trims_long_source_text(self):
+        item = generator.Item(
+            "known", "Cancer trial", "https://example.test", "2026-08-04", "Journal",
+            "medicine", "peer-reviewed", "Europe", summary="x" * 5000,
+        )
+        prompt = generator.ai_prompt([item], date(2026, 8, 5))
+        self.assertNotIn("x" * 901, prompt)
+        self.assertIn("x" * 900, prompt)
+
+    def test_default_editorial_selection_is_bounded(self):
+        items = []
+        for section, count in (("economy", 20), ("geopolitics", 20), ("medicine", 20)):
+            for index in range(count):
+                items.append(generator.Item(str(index) + section, f"Title {index}", "https://example.test", "2026-08-04", "Source", section, "official", "Europe", score=index))
+        selected = generator.select_items(items)
+        self.assertEqual(sum(item.section == "economy" for item in selected), 8)
+        self.assertEqual(sum(item.section == "geopolitics" for item in selected), 8)
+        self.assertEqual(sum(item.section == "medicine" for item in selected), 10)
+
     def test_company_source_is_visibly_labelled(self):
         item = generator.Item("company", "Company result", "https://example.test", "2026-08-04", "Novartis", "economy", "company", "Europe", watchlist=["NVS"])
         briefing = {"overview": ["Brief"], "sections": {"economy": [{"title": "Story", "summary": "Text", "why_it_matters": "Relevant", "evidence": "Company report", "item_ids": ["company"]}], "geopolitics": [], "medicine": []}}
