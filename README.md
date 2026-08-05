@@ -2,6 +2,8 @@
 
 A fully autonomous combined briefing. GitHub Actions computes the transparent market-risk score and EUR watchlist, collects reputable public sources for the global economy, geopolitics and medical progress, uses Groq for a source-grounded synthesis, creates one Kobo/Instapaper-friendly static article, deploys it to GitHub Pages, and optionally submits it to Instapaper. When Groq is unavailable, the news component uses a deterministic source-excerpt fallback.
 
+Each edition opens with a rotating, source-linked historical quotation and a short original reflection informed by Buddhist philosophy. The rotation is deterministic by date, so rerunning an edition never silently changes its opening.
+
 ## What it produces
 
 - `https://YOUR-USER.github.io/YOUR-REPO/index.html` — the current report, replaced on every run
