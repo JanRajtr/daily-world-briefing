@@ -62,17 +62,24 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn('class="indicators"', page)
         self.assertIn("Latest: +0.10 pp · Risk: 50/100", page)
 
-    def test_existing_report_is_not_overwritten(self):
+    def test_existing_report_is_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
-            reports = Path(directory) / "reports"
-            reports.mkdir()
-            report = reports / "2025-01-02.html"
-            metadata = reports / "2025-01-02.json"
+            report = Path(directory) / "index.html"
+            metadata = Path(directory) / "report.json"
             report.write_text("original")
             metadata.write_text(json.dumps({"date": "2025-01-02"}))
-            with patch.object(sys, "argv", ["generate_report.py", "--date", "2025-01-02", "--output", directory]):
+            fixture = Path(directory) / "fixture.json"
+            fixture.write_text(json.dumps({series: [["2025-01-02", 1]] for metric in generator.METRICS for series in metric.series}))
+            simple_metric = generator.Metric(
+                "simple", ("VIXCLS",), "Simple", "Test", 100, "", "Test",
+                lambda data: generator.latest(data, "VIXCLS"), lambda value: 25, "Test",
+            )
+            with patch.object(generator, "METRICS", (simple_metric,)), patch.object(
+                sys, "argv", ["generate_report.py", "--date", "2025-01-02", "--output", directory, "--fixture", str(fixture)]
+            ):
                 generator.main()
-            self.assertEqual(report.read_text(), "original")
+            self.assertNotEqual(report.read_text(), "original")
+            self.assertIn("Market Risk Briefing", report.read_text())
 
     def test_future_report_date_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

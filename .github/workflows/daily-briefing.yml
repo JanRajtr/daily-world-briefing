@@ -3,7 +3,7 @@ name: Daily Market Risk Briefing
 on:
   schedule:
     # 06:15 UTC = 07:15 CET / 08:15 CEST. GitHub schedules use UTC.
-    - cron: "15 6 * * 1-5"
+    - cron: "15 6 * * *"
   workflow_dispatch:
     inputs:
       report_date:
@@ -62,10 +62,10 @@ jobs:
       - name: Run tests
         run: python -m unittest discover -s tests -v
 
-      - name: Generate static report and archive
+      - name: Generate rolling daily report
         run: python scripts/generate_report.py --date "${{ steps.date.outputs.report_date }}" --output site
 
-      - name: Commit report to archive
+      - name: Commit daily report
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -101,8 +101,9 @@ jobs:
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
           REPORT_DATE: ${{ needs.build.outputs.report_date }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          REPORT_URL="${PAGE_URL%/}/reports/${REPORT_DATE}.html"
+          REPORT_URL="${PAGE_URL%/}/index.html?run=${RUN_ID}"
           for attempt in {1..12}; do
             if curl --fail --silent --show-error --location "$REPORT_URL" >/dev/null; then exit 0; fi
             sleep 5
@@ -115,11 +116,12 @@ jobs:
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
           REPORT_DATE: ${{ needs.build.outputs.report_date }}
+          RUN_ID: ${{ github.run_id }}
           INSTAPAPER_USERNAME: ${{ secrets.INSTAPAPER_USERNAME }}
           INSTAPAPER_PASSWORD: ${{ secrets.INSTAPAPER_PASSWORD }}
         run: |
           test -n "$INSTAPAPER_USERNAME" || { echo "Missing INSTAPAPER_USERNAME secret" >&2; exit 1; }
-          REPORT_URL="${PAGE_URL%/}/reports/${REPORT_DATE}.html"
+          REPORT_URL="${PAGE_URL%/}/index.html?run=${RUN_ID}"
           STATUS=$(curl --silent --show-error --output /tmp/instapaper-response.txt --write-out '%{http_code}' \
             --user "$INSTAPAPER_USERNAME:$INSTAPAPER_PASSWORD" \
             --data-urlencode "url=$REPORT_URL" \

@@ -204,11 +204,6 @@ article{{max-width:760px;margin:0 auto;background:var(--paper);padding:3.2rem 3r
 </article></body></html>''', score, label
 
 
-def render_index(entries):
-    items = "".join(f'<li><a href="reports/{e["date"]}.html">{e["date"]}</a> — {e["score"]:.0f}/100, {html.escape(e["label"])}</li>' for e in entries)
-    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Market Risk Briefing archive</title><style>body{{max-width:720px;margin:3rem auto;padding:0 1rem;font:18px/1.65 Georgia,serif;color:#182026}}h1{{font:700 2rem/1.2 system-ui,sans-serif}}li{{margin:.55rem 0}}a{{color:#173f5f}}</style></head><body><main><h1>Market Risk Briefing</h1><p>Daily, rules-based market and macro risk monitoring using public data. No generative AI.</p><h2>Archive</h2><ol>{items or '<li>No reports yet.</li>'}</ol></main></body></html>'''
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", default=date.today().isoformat(), help="Report date (YYYY-MM-DD)")
@@ -219,15 +214,9 @@ def main():
     if report_date > date.today():
         raise SystemExit(f"Report date {report_date} is in the future; refusing to publish.")
     out = Path(args.output)
-    reports_dir = out / "reports"
-    reports_dir.mkdir(parents=True, exist_ok=True)
-    report_path = reports_dir / f"{report_date}.html"
-    meta_path = reports_dir / f"{report_date}.json"
-    if report_path.exists() or meta_path.exists():
-        if not (report_path.exists() and meta_path.exists()):
-            raise SystemExit(f"Incomplete existing report for {report_date}; refusing to overwrite it.")
-        print(f"Report for {report_date} already exists; preserving the immutable archive entry.")
-        return
+    out.mkdir(parents=True, exist_ok=True)
+    report_path = out / "index.html"
+    meta_path = out / "report.json"
 
     if args.fixture:
         raw = json.loads(Path(args.fixture).read_text())
@@ -266,16 +255,7 @@ def main():
     page, score, label = render_report(report_date.isoformat(), results, failures, generated_at)
     report_path.write_text(page, encoding="utf-8")
     meta_path.write_text(json.dumps({"date": report_date.isoformat(), "score": score, "label": label, "generated_at": generated_at}, indent=2) + "\n")
-    entries = []
-    for path in reports_dir.glob("????-??-??.json"):
-        try:
-            entries.append(json.loads(path.read_text()))
-        except (json.JSONDecodeError, KeyError):
-            print(f"WARNING: ignoring invalid metadata {path}", file=sys.stderr)
-    entries.sort(key=lambda e: e["date"], reverse=True)
-    (out / "index.html").write_text(render_index(entries), encoding="utf-8")
-    (out / "latest.html").write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=reports/' + report_date.isoformat() + '.html"><link rel="canonical" href="reports/' + report_date.isoformat() + '.html">', encoding="utf-8")
-    print(f"Generated {reports_dir / f'{report_date}.html'} with score {score:.1f} ({label})")
+    print(f"Generated {report_path} with score {score:.1f} ({label})")
 
 
 if __name__ == "__main__":
