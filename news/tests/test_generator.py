@@ -93,7 +93,7 @@ class GeneratorTests(unittest.TestCase):
 
     def test_ai_cannot_cite_unknown_item(self):
         item = generator.Item("known", "Title", "https://example.test", "2026-08-04", "Source", "economy", "official", "Europe")
-        briefing = {"overview": [], "sections": {"economy": [{"title": "Story", "summary": "Text", "item_ids": ["invented"]}], "geopolitics": [], "medicine": []}}
+        briefing = {"overview": [], "sections": {"economy": [{"title": "Story", "summary": "Text", "item_ids": ["invented"]}]}}
         clean = generator.validate_briefing(briefing, [item])
         self.assertEqual(clean["sections"]["economy"], [])
 
@@ -113,12 +113,12 @@ class GeneratorTests(unittest.TestCase):
                 items.append(generator.Item(str(index) + section, f"Title {index}", "https://example.test", "2026-08-04", "Source", section, "official", "Europe", score=index))
         selected = generator.select_items(items)
         self.assertEqual(sum(item.section == "economy" for item in selected), 8)
-        self.assertEqual(sum(item.section == "geopolitics" for item in selected), 8)
-        self.assertEqual(sum(item.section == "medicine" for item in selected), 10)
+        self.assertEqual(sum(item.section == "geopolitics" for item in selected), 0)
+        self.assertEqual(sum(item.section == "medicine" for item in selected), 0)
 
     def test_company_source_is_visibly_labelled(self):
         item = generator.Item("company", "Company result", "https://example.test", "2026-08-04", "Novartis", "economy", "company", "Europe", watchlist=["NVS"])
-        briefing = {"overview": ["Brief"], "sections": {"economy": [{"title": "Story", "summary": "Text", "why_it_matters": "Relevant", "evidence": "Company report", "item_ids": ["company"]}], "geopolitics": [], "medicine": []}}
+        briefing = {"overview": ["Brief"], "sections": {"economy": [{"title": "Story", "summary": "Text", "why_it_matters": "Relevant", "evidence": "Company report", "item_ids": ["company"]}]}}
         page = generator.render_report(date(2026, 8, 5), briefing, [item], [], "now", True)
         self.assertIn("interested-party source", page)
         self.assertIn("Watchlist:</strong> NVS", page)
@@ -131,10 +131,10 @@ class GeneratorTests(unittest.TestCase):
             generator.main()
             page = (Path(directory) / "index.html").read_text()
             metadata = json.loads((Path(directory) / "report.json").read_text())
-        self.assertIn("Global geopolitics", page)
-        self.assertIn("Medical progress, care and longevity", page)
+        self.assertNotIn("Global geopolitics", page)
+        self.assertNotIn("Medical progress, care and longevity", page)
         self.assertFalse(metadata["ai_used"])
-        self.assertEqual(metadata["selected_items"], 10)
+        self.assertEqual(metadata["selected_items"], 3)
 
 
 if __name__ == "__main__":

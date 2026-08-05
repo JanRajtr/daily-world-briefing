@@ -1,4 +1,4 @@
-name: Daily World Briefing
+name: Daily Market & Wellbeing Briefing
 
 on:
   schedule:
@@ -144,7 +144,7 @@ jobs:
             status=$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
               --user "$username:$password" \
               --data-urlencode "url=$REPORT_URL" \
-              --data-urlencode "title=Daily Market & World Briefing — $REPORT_DATE" \
+              --data-urlencode "title=Daily Market & Wellbeing Briefing — $REPORT_DATE" \
               https://www.instapaper.com/api/add)
             if [[ "$status" != "201" ]]; then
               echo "Instapaper ${account_label} account returned HTTP $status" >&2

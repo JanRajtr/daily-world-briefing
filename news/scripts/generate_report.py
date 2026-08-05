@@ -24,7 +24,8 @@ USER_AGENT = "daily-news-briefing/1.0 (public-feed reader)"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 PUBMED_SEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 PUBMED_FETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
-SECTIONS = ("economy", "geopolitics", "medicine")
+SECTIONS = ("economy",)
+DISABLED_SECTIONS = {"geopolitics", "medicine"}
 
 
 @dataclass(frozen=True)
@@ -380,7 +381,7 @@ def deduplicate(items: list[Item]) -> list[Item]:
 
 
 def select_items(items: list[Item], limits: dict[str, int] | None = None) -> list[Item]:
-    limits = limits or {"economy": 8, "geopolitics": 8, "medicine": 10}
+    limits = limits or {"economy": 8}
     selected = []
     for section in SECTIONS:
         candidates = [item for item in items if item.section == section]
@@ -396,9 +397,9 @@ def ai_prompt(items: list[Item], report_date: date) -> str:
         records.append(record)
     return f"""Create a concise English daily briefing for {report_date.isoformat()} using ONLY the supplied records.
 Return valid JSON, with no markdown, in this exact shape:
-{{"overview":["..."],"sections":{{"economy":[STORY],"geopolitics":[STORY],"medicine":[STORY]}}}}
+{{"overview":["..."],"sections":{{"economy":[STORY]}}}}
 Each STORY is {{"title":"...","summary":"2-3 factual sentences","why_it_matters":"...","item_ids":["id"],"evidence":"label"}}.
-Use 4-6 economy stories, 4-6 geopolitics stories, and 5-8 medicine stories when material permits. Merge records about the same event and cite all their IDs. Never add a fact absent from the records. Treat company and government claims as attributed claims, not independent confirmation. Include medical developments only when care is publicly available or plausibly close to availability: regulatory decisions, guidelines, established procedures, Phase 3 evidence, or strong reviews of clinical care. Exclude laboratory, animal, preclinical, Phase 1 and Phase 2 work. Medical scope is new methods and progress in cancer or cardiovascular care; for eyes, include only glaucoma, corneal/eye transplantation, or recovery and rehabilitation after ocular accidents or trauma. State the evidence stage and never call something a cure unless the records justify it. For economy, explain relevant watchlist connections without forecasting prices. For geopolitics, distinguish decisions from proposals and contested claims. If evidence is thin, omit the story.
+Use 4-6 economy stories when material permits. Merge records about the same event and cite all their IDs. Never add a fact absent from the records. Treat company and government claims as attributed claims, not independent confirmation. Explain relevant watchlist connections without forecasting prices. If evidence is thin, omit the story.
 RECORDS:
 {json.dumps(records, ensure_ascii=False)}"""
 
@@ -449,7 +450,7 @@ def validate_briefing(briefing: dict, items: list[Item]) -> dict:
 
 def fallback_briefing(items: list[Item]) -> dict:
     sections = {}
-    limits = {"economy": 6, "geopolitics": 6, "medicine": 8}
+    limits = {"economy": 6}
     for section in SECTIONS:
         stories = []
         for item in sorted((value for value in items if value.section == section), key=lambda value: value.score, reverse=True)[:limits[section]]:
@@ -476,7 +477,7 @@ def fallback_briefing(items: list[Item]) -> dict:
 
 def render_report(report_date: date, briefing: dict, items: list[Item], failures: list[str], generated_at: str, ai_used: bool) -> str:
     by_id = {item.id: item for item in items}
-    labels = {"economy": "Global economy and portfolio", "geopolitics": "Global geopolitics", "medicine": "Medical progress, care and longevity"}
+    labels = {"economy": "Global economy and portfolio"}
     overview = "".join(f"<li>{html.escape(value)}</li>" for value in briefing.get("overview", []))
     sections_html = []
     for section in SECTIONS:
@@ -507,14 +508,14 @@ def render_report(report_date: date, briefing: dict, items: list[Item], failures
     mode = "AI-assisted, source-grounded synthesis" if ai_used else "extractive fallback"
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Daily World Briefing — {report_date.isoformat()}</title><meta name="description" content="Daily briefing on the global economy, geopolitics and medical progress.">
+<title>Daily Economy Briefing — {report_date.isoformat()}</title><meta name="description" content="Daily briefing on the global economy and portfolio.">
 </head><body><article>
-<p><strong>Daily World Briefing — {report_date.isoformat()}.</strong> Global economy and portfolio, geopolitics, and progress in medicine and care.</p>
+<p><strong>Daily Economy Briefing — {report_date.isoformat()}.</strong> Global economy and portfolio.</p>
 <h2>Today in brief</h2><ul>{overview}</ul>
 {''.join(sections_html)}
 {warning}
 <h2>Editorial method</h2>
-<p>Sources are ranked by authority and independence. Regulators, public research institutions and primary records are preferred. Company and government statements are attributed and are not treated as independent confirmation. Medical findings are described according to their reported evidence stage. This report is informational and is not medical or investment advice.</p>
+<p>Economic sources are ranked by authority and independence. Company and government statements are attributed and are not treated as independent confirmation. Geopolitics and medical/science news are currently disabled. This report is informational and is not investment advice.</p>
 <p>Generated {generated_at} UTC using {mode}. The system processed {len(items)} selected public-feed records. Links lead to the original sources.</p>
 </article></body></html>'''
 
@@ -540,7 +541,7 @@ def main() -> None:
         items = load_fixture(Path(args.fixture))
     else:
         items = []
-        for source in SOURCES:
+        for source in (value for value in SOURCES if value.default_section not in DISABLED_SECTIONS):
             try:
                 parsed = parse_feed(source, fetch(source.url), report_date)
                 items.extend(parsed)
@@ -548,13 +549,6 @@ def main() -> None:
             except (RuntimeError, ET.ParseError, ValueError) as exc:
                 failures.append(f"{source.name}: {exc}")
                 print(f"WARNING: {source.name}: {exc}", file=sys.stderr)
-        try:
-            pubmed_items = fetch_pubmed(report_date)
-            items.extend(pubmed_items)
-            print(f"Fetched PubMed evidence: {len(pubmed_items)} recent items")
-        except (RuntimeError, ET.ParseError, ValueError) as exc:
-            failures.append(f"PubMed: {exc}")
-            print(f"WARNING: PubMed: {exc}", file=sys.stderr)
     items = select_items(deduplicate(items))
     if len(items) < 3:
         raise SystemExit("Too few source items were available; refusing to publish.")
