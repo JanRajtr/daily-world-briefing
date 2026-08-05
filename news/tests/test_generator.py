@@ -29,6 +29,47 @@ class GeneratorTests(unittest.TestCase):
         source = generator.Source("University", "x", "economy", "university", "Europe")
         self.assertEqual(generator.classify(source, "New glaucoma treatment", "Phase 3 trial"), "medicine")
 
+    def test_rejects_thin_google_index_and_local_program_items(self):
+        source = generator.Source(
+            "SIPRI", "https://news.google.com/rss/search?q=site%3Asipri.org", "geopolitics",
+            "independent-analysis", "Europe",
+        )
+        payload = b'''<rss><channel><item><title>armstrade . sipri . org / armstrade / htm - SIPRI Arms Transfers Database</title>
+        <link>https://news.google.com/rss/articles/example</link><pubDate>Wed, 05 Aug 2026 10:00:00 GMT</pubDate>
+        <description>SIPRI Arms Transfers Database</description></item></channel></rss>'''
+        self.assertEqual(generator.parse_feed(source, payload, date(2026, 8, 5)), [])
+
+        medical = generator.Source(
+            "ESC", "https://news.google.com/rss/search?q=site%3Aescardio.org", "medicine",
+            "professional-society", "Europe",
+        )
+        payload = b'''<rss><channel><item><title>Establishment of a cardio-oncology program in the Republic of Kazakhstan</title>
+        <link>https://news.google.com/rss/articles/medical</link><pubDate>Wed, 05 Aug 2026 10:00:00 GMT</pubDate>
+        <description>Establishment of a cardio-oncology program in the Republic of Kazakhstan ESC 365</description></item></channel></rss>'''
+        self.assertEqual(generator.parse_feed(medical, payload, date(2026, 8, 5)), [])
+
+    def test_keeps_detailed_medical_advance(self):
+        source = generator.Source("EMA", "https://example.test/feed", "medicine", "regulator", "Europe")
+        payload = b'''<rss><channel><item><title>EMA recommends new therapy for retinal disease</title>
+        <link>https://example.test/retina</link><pubDate>Wed, 05 Aug 2026 10:00:00 GMT</pubDate>
+        <description>A phase 3 trial in 700 patients found improved visual function compared with standard care.</description></item></channel></rss>'''
+        items = generator.parse_feed(source, payload, date(2026, 8, 5))
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].section, "medicine")
+
+    def test_parses_pubmed_abstract_and_evidence_type(self):
+        payload = b'''<PubmedArticleSet><PubmedArticle><MedlineCitation><PMID>12345</PMID>
+        <Article><Journal><Title>European Heart Journal</Title></Journal>
+        <ArticleTitle>Randomized treatment for cardiovascular disease</ArticleTitle>
+        <Abstract><AbstractText Label="RESULTS">The randomized trial enrolled 900 patients with cardiovascular disease and found fewer clinical events after treatment compared with standard care during two years of follow-up.</AbstractText></Abstract>
+        <PublicationTypeList><PublicationType>Randomized Controlled Trial</PublicationType></PublicationTypeList>
+        </Article></MedlineCitation></PubmedArticle></PubmedArticleSet>'''
+        items = generator.parse_pubmed(payload, date(2026, 8, 5))
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].source_type, "peer-reviewed")
+        self.assertIn("Randomized Controlled Trial", items[0].tags)
+        self.assertIn("pubmed.ncbi.nlm.nih.gov/12345", items[0].url)
+
     def test_deduplicate_similar_titles(self):
         base = dict(url="https://example.test", published="2026-08-04", source="A", section="economy", source_type="official", region="Europe")
         first = generator.Item("1", "Central bank holds interest rates unchanged", **base, score=100)

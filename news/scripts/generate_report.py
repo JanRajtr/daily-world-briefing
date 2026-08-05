@@ -22,6 +22,8 @@ from pathlib import Path
 
 USER_AGENT = "daily-news-briefing/1.0 (public-feed reader)"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+PUBMED_SEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+PUBMED_FETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 SECTIONS = ("economy", "geopolitics", "medicine")
 
 
@@ -92,6 +94,18 @@ LOW_VALUE_MEDICAL_TERMS = (
     "workshop", "webinar", "small business", "warning letter", "registered outsourcing",
     "guidance for industry", "meeting announcement", "request for comments", "application form",
     "emergency preparedness", "learn | fda",
+)
+MEDICAL_ADVANCE_TERMS = (
+    "new ", "novel", "first ", "trial", "phase 1", "phase 2", "phase 3", "randomized",
+    "randomised", "approv", "authoris", "authoriz", "improves", "improved", "reduces",
+    "reduced", "effective", "efficacy", "treatment", "therapy", "surgery", "surgical",
+    "procedure", "diagnostic", "detection", "survival", "remission", "restores", "restored",
+    "breakthrough", "guideline", "recommendation", "results", "discovery", "discovers",
+)
+LOW_VALUE_PAGE_TERMS = (
+    "arms transfers database", "media library", "daily news ", "site map", "sitemap",
+    "press contacts", "transactions under its current share buyback", "registered outsourcing",
+    "staff concludes staff visit", "fund to start making investments", " - uat",
 )
 GEOPOLITICAL_TERMS = (
     "war", "ceasefire", "sanction", "tariff", "export control", "NATO", "Ukraine", "Russia",
@@ -184,10 +198,25 @@ def parse_feed(source: Source, payload: bytes, report_date: date, lookback_days:
             continue
         section = classify(source, title, summary)
         relevance_text = f"{title} {summary}".lower()
+        if any(term in relevance_text for term in LOW_VALUE_PAGE_TERMS):
+            continue
+        if re.search(r"\b[a-z0-9.-]+\s+\.\s+[a-z]{2,}\s+/", title.lower()):
+            continue
+        if "warning-letters/" in url.lower() or re.search(r"\b\d{6}\s*-\s*\d{2}/\d{2}/\d{4}\b", title):
+            continue
         if section == "medicine":
             if not any(term in relevance_text for term in MEDICAL_PRIORITY_TERMS):
                 continue
             if any(term in relevance_text for term in LOW_VALUE_MEDICAL_TERMS):
+                continue
+            if "news.google.com/" in source.url and not any(term in relevance_text for term in MEDICAL_ADVANCE_TERMS):
+                continue
+        # Google News discovery feeds often index navigation pages and provide only
+        # the title repeated as a description. Such records cannot support a useful
+        # summary and are excluded before either AI or fallback rendering.
+        if "news.google.com/" in source.url:
+            extra_words = title_words(summary) - title_words(title)
+            if len(extra_words) < 5:
                 continue
         combined = f"{title} {summary} {' '.join(source.tags)}"
         matches = watchlist_matches(combined)
@@ -217,6 +246,78 @@ def fetch(url: str, retries: int = 3) -> bytes:
             if attempt + 1 < retries:
                 time.sleep(2 ** attempt)
     raise RuntimeError(str(error))
+
+
+def parse_pubmed(payload: bytes, report_date: date) -> list[Item]:
+    root = ET.fromstring(payload)
+    items = []
+    for article in root.findall(".//PubmedArticle"):
+        citation = article.find(".//MedlineCitation")
+        article_node = article.find(".//Article")
+        if citation is None or article_node is None:
+            continue
+        pmid = node_text(citation, ("pmid",))
+        title_node = article_node.find("ArticleTitle")
+        title = clean_text("".join(title_node.itertext())) if title_node is not None else ""
+        abstract_parts = []
+        for part in article_node.findall(".//Abstract/AbstractText"):
+            text = clean_text("".join(part.itertext()))
+            label = part.attrib.get("Label", "").title()
+            if text:
+                abstract_parts.append(f"{label}: {text}" if label else text)
+        summary = " ".join(abstract_parts)[:2200]
+        if not pmid or not title or len(summary) < 120:
+            continue
+        journal = clean_text(article_node.findtext("Journal/Title", default="")) or "indexed journal"
+        types = [clean_text(node.text or "") for node in article_node.findall("PublicationTypeList/PublicationType")]
+        title_lower = title.lower()
+        combined = f"{title} {summary}".lower()
+        tags = []
+        if any(term in title_lower for term in ("cancer", "tumor", "tumour", "oncolog", "neoplasm", "melanoma", "leukemia", "lymphoma")):
+            tags.append("cancer")
+        if any(term in title_lower for term in ("cardiovascular", "heart", "cardiac", "stroke", "coronary", "atrial fibrillation")):
+            tags.append("cardiovascular")
+        if any(term in title_lower for term in ("retina", "glaucoma", "cataract", "cornea", "vision", "ophthalm", "macular")):
+            tags.append("eye care")
+        if not tags:
+            continue
+        evidence = next((value for value in types if value in ("Randomized Controlled Trial", "Clinical Trial", "Meta-Analysis", "Systematic Review", "Practice Guideline")), types[0] if types else "Journal Article")
+        tags.extend(("peer reviewed", evidence))
+        identifier = hashlib.sha256(f"pubmed|{pmid}".encode()).hexdigest()[:12]
+        direct_advance = any(term in title_lower for term in (
+            "treatment", "therapy", "surgery", "procedure", "diagnos", "detection", "survival",
+            "remission", "vaccine", "transplant", "prevention", "drug", "antithrombotic",
+        ))
+        score = (112 if "Randomized Controlled Trial" in types else 106) + (10 if direct_advance else 0)
+        if any(term in title_lower for term in ("caregiver", "survey", "protocol")):
+            score -= 12
+        items.append(Item(
+            identifier, title, f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/", report_date.isoformat(),
+            f"{journal} via PubMed", "medicine", "peer-reviewed", "Global", summary,
+            tags, watchlist_matches(combined), score,
+        ))
+    return items
+
+
+def fetch_pubmed(report_date: date) -> list[Item]:
+    query = (
+        '(cancer[Title/Abstract] OR oncology[Title/Abstract] OR cardiovascular[Title/Abstract] '
+        'OR cardiac[Title/Abstract] OR stroke[Title/Abstract] OR retinal[Title/Abstract] '
+        'OR glaucoma[Title/Abstract] OR cataract[Title/Abstract] OR ophthalmology[Title/Abstract]) '
+        'AND (clinical trial[Publication Type] OR randomized controlled trial[Publication Type] '
+        'OR meta-analysis[Publication Type] OR systematic review[Publication Type] '
+        'OR practice guideline[Publication Type])'
+    )
+    search_url = PUBMED_SEARCH + "?" + urllib.parse.urlencode({
+        "db": "pubmed", "term": query, "retmode": "xml", "retmax": 24, "sort": "pub date",
+        "datetype": "pdat", "mindate": (report_date - timedelta(days=4)).isoformat(), "maxdate": report_date.isoformat(),
+    })
+    search = ET.fromstring(fetch(search_url))
+    identifiers = [node.text for node in search.findall(".//IdList/Id") if node.text]
+    if not identifiers:
+        return []
+    fetch_url = PUBMED_FETCH + "?" + urllib.parse.urlencode({"db": "pubmed", "id": ",".join(identifiers), "retmode": "xml"})
+    return parse_pubmed(fetch(fetch_url), report_date)
 
 
 def title_words(title: str) -> set[str]:
@@ -308,10 +409,19 @@ def fallback_briefing(items: list[Item]) -> dict:
         stories = []
         for item in sorted((value for value in items if value.section == section), key=lambda value: value.score, reverse=True)[:limits[section]]:
             attribution = f"{item.source} reports: " if item.source_type in ("company", "official") else ""
+            if item.watchlist:
+                why = f"Watchlist relevance: {', '.join(item.watchlist)}."
+            elif section == "geopolitics":
+                why = "Potential relevance to European security, trade, energy or cross-border economic conditions."
+            elif section == "medicine":
+                focus = ", ".join(tag for tag in item.tags if tag not in ("research", "health", "medicine"))
+                why = f"Relevant to the briefing's medical focus{': ' + focus if focus else ''}."
+            else:
+                why = "Potential relevance to global economic conditions and European markets."
             stories.append({
                 "title": item.title,
                 "summary": attribution + (item.summary or "The source supplied no public summary; follow the source link for details."),
-                "why_it_matters": f"Watchlist relevance: {', '.join(item.watchlist)}." if item.watchlist else "Selected for its relevance and source quality.",
+                "why_it_matters": why,
                 "evidence": f"Extractive fallback; {item.source_type} source",
                 "item_ids": [item.id],
             })
@@ -393,6 +503,13 @@ def main() -> None:
             except (RuntimeError, ET.ParseError, ValueError) as exc:
                 failures.append(f"{source.name}: {exc}")
                 print(f"WARNING: {source.name}: {exc}", file=sys.stderr)
+        try:
+            pubmed_items = fetch_pubmed(report_date)
+            items.extend(pubmed_items)
+            print(f"Fetched PubMed evidence: {len(pubmed_items)} recent items")
+        except (RuntimeError, ET.ParseError, ValueError) as exc:
+            failures.append(f"PubMed: {exc}")
+            print(f"WARNING: PubMed: {exc}", file=sys.stderr)
     items = select_items(deduplicate(items))
     if len(items) < 3:
         raise SystemExit("Too few source items were available; refusing to publish.")
@@ -404,7 +521,10 @@ def main() -> None:
             briefing = validate_briefing(call_groq(items, report_date, api_key, args.model), items)
             ai_used = True
         except (urllib.error.URLError, TimeoutError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
-            failures.append(f"AI summarization unavailable: {exc}")
+            if isinstance(exc, urllib.error.HTTPError) and exc.code == 401:
+                failures.append("AI summarization unavailable: Groq rejected GROQ_API_KEY (HTTP 401); replace the repository secret")
+            else:
+                failures.append(f"AI summarization unavailable: {exc}")
             briefing = fallback_briefing(items)
     else:
         if not args.no_ai:

@@ -18,7 +18,7 @@ The project collects public RSS/Atom feeds, ranks and deduplicates recent materi
 - Medical stories must state their evidence stage; preliminary findings must not be described as established treatment.
 - The report links to every underlying source and contains no medical or investment recommendation.
 
-Configured European sources include the ECB, European Commission, Council of the EU, EMA, NATO, SIPRI, Bruegel, the European Society of Cardiology, Novartis and ASML. US and global sources add FDA, NCI, NEI, Harvard, IMF and BIS coverage. Edit `SOURCES` in `scripts/generate_report.py` to add or remove feeds.
+Configured European sources include the ECB, European Commission, Council of the EU, EMA, NATO, SIPRI, Bruegel, the European Society of Cardiology, Novartis and ASML. US and global sources add FDA, NCI, NEI, Harvard, IMF and BIS coverage. A structured PubMed search adds recent clinical trials, systematic reviews, meta-analyses and guidelines with substantive abstracts for cancer, cardiovascular disease and eye care. Edit `SOURCES` in `scripts/generate_report.py` to add or remove feeds.
 
 ## Local verification
 
