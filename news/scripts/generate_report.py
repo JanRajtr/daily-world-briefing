@@ -472,7 +472,12 @@ def fallback_briefing(items: list[Item]) -> dict:
                 "item_ids": [item.id],
             })
         sections[section] = stories
-    return {"overview": ["AI summarization was unavailable; this edition uses source titles and public feed excerpts."], "sections": sections}
+    overview = (
+        ["No sufficiently relevant recent economy items were available from the configured feeds."]
+        if not items else
+        ["AI summarization was unavailable; this edition uses source titles and public feed excerpts."]
+    )
+    return {"overview": overview, "sections": sections}
 
 
 def render_report(report_date: date, briefing: dict, items: list[Item], failures: list[str], generated_at: str, ai_used: bool) -> str:
@@ -550,12 +555,10 @@ def main() -> None:
                 failures.append(f"{source.name}: {exc}")
                 print(f"WARNING: {source.name}: {exc}", file=sys.stderr)
     items = select_items(deduplicate(items))
-    if len(items) < 3:
-        raise SystemExit("Too few source items were available; refusing to publish.")
 
     api_key = os.environ.get("GROQ_API_KEY", "")
     ai_used = False
-    if api_key and not args.no_ai:
+    if items and api_key and not args.no_ai:
         try:
             briefing = validate_briefing(call_groq(items, report_date, api_key, args.model), items)
             ai_used = True
@@ -568,7 +571,7 @@ def main() -> None:
                 failures.append(f"AI summarization unavailable: {exc}")
             briefing = fallback_briefing(items)
     else:
-        if not args.no_ai:
+        if items and not api_key and not args.no_ai:
             failures.append("GROQ_API_KEY is not configured; used extractive fallback")
         briefing = fallback_briefing(items)
 

@@ -136,6 +136,19 @@ class GeneratorTests(unittest.TestCase):
         self.assertFalse(metadata["ai_used"])
         self.assertEqual(metadata["selected_items"], 3)
 
+    def test_empty_fixture_publishes_transparent_empty_digest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory) / "empty.json"
+            fixture.write_text("[]")
+            output = Path(directory) / "output"
+            with patch.object(sys, "argv", ["generate_report.py", "--date", "2026-08-05", "--output", str(output), "--fixture", str(fixture), "--no-ai"]):
+                generator.main()
+            page = (output / "index.html").read_text()
+            metadata = json.loads((output / "report.json").read_text())
+        self.assertIn("No sufficiently relevant recent economy items", page)
+        self.assertIn("No sufficiently relevant items were available", page)
+        self.assertEqual(metadata["selected_items"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
