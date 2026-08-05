@@ -111,7 +111,7 @@ jobs:
           echo "Report URL was not reachable after deployment: $REPORT_URL" >&2
           exit 1
 
-      - name: Send report to Instapaper
+      - name: Send report to Instapaper accounts
         if: needs.build.outputs.should_notify == 'true'
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
@@ -119,17 +119,33 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           INSTAPAPER_USERNAME: ${{ secrets.INSTAPAPER_USERNAME }}
           INSTAPAPER_PASSWORD: ${{ secrets.INSTAPAPER_PASSWORD }}
+          INSTAPAPER_USERNAME_SECONDARY: ${{ secrets.INSTAPAPER_USERNAME_SECONDARY }}
+          INSTAPAPER_PASSWORD_SECONDARY: ${{ secrets.INSTAPAPER_PASSWORD_SECONDARY }}
         run: |
           test -n "$INSTAPAPER_USERNAME" || { echo "Missing INSTAPAPER_USERNAME secret" >&2; exit 1; }
           REPORT_URL="${PAGE_URL%/}/index.html?run=${RUN_ID}"
-          STATUS=$(curl --silent --show-error --output /tmp/instapaper-response.txt --write-out '%{http_code}' \
-            --user "$INSTAPAPER_USERNAME:$INSTAPAPER_PASSWORD" \
-            --data-urlencode "url=$REPORT_URL" \
-            --data-urlencode "title=Market Summary — $REPORT_DATE" \
-            https://www.instapaper.com/api/add)
-          if [[ "$STATUS" != "201" ]]; then
-            echo "Instapaper returned HTTP $STATUS" >&2
-            sed 's/./*/g' /tmp/instapaper-response.txt >&2
-            exit 1
+          send_to_instapaper() {
+            local account_label="$1"
+            local username="$2"
+            local password="$3"
+            local response_file="/tmp/instapaper-${account_label}-response.txt"
+            local status
+            status=$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+              --user "$username:$password" \
+              --data-urlencode "url=$REPORT_URL" \
+              --data-urlencode "title=Market Summary — $REPORT_DATE" \
+              https://www.instapaper.com/api/add)
+            if [[ "$status" != "201" ]]; then
+              echo "Instapaper ${account_label} account returned HTTP $status" >&2
+              sed 's/./*/g' "$response_file" >&2
+              return 1
+            fi
+            echo "Report added to the ${account_label} Instapaper account."
+          }
+
+          send_to_instapaper primary "$INSTAPAPER_USERNAME" "$INSTAPAPER_PASSWORD"
+          if [[ -n "$INSTAPAPER_USERNAME_SECONDARY" ]]; then
+            send_to_instapaper secondary "$INSTAPAPER_USERNAME_SECONDARY" "$INSTAPAPER_PASSWORD_SECONDARY"
+          else
+            echo "Secondary Instapaper account is not configured; skipping it."
           fi
-          echo "Report added to Instapaper."

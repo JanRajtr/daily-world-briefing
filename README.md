@@ -19,7 +19,8 @@ The HTML uses a single semantic `<article>`, real headings, lists and a compact 
 4. Open **Settings → Secrets and variables → Actions → New repository secret** and add:
    - `INSTAPAPER_USERNAME` — the Instapaper email address or username.
    - `INSTAPAPER_PASSWORD` — the account password. If the account has no password, save an empty value if GitHub permits it; otherwise use any placeholder value, which the Simple API documentation says is accepted for passwordless accounts.
-5. Open **Actions → Daily Market Risk Briefing → Run workflow**. Leave the date blank and `Send the published URL to Instapaper` off for the first test.
+   - Optional second account: `INSTAPAPER_USERNAME_SECONDARY` and `INSTAPAPER_PASSWORD_SECONDARY`. When the secondary username is absent, delivery to the primary account continues normally.
+5. Open **Actions → Daily Market Summary → Run workflow**. Leave the date blank and `Send the published URL to Instapaper` off for the first test.
 6. When the run is green, open the deployment URL shown in the `deploy` job and verify the article.
 7. Run it once more with `Send the published URL to Instapaper` enabled. Confirm that the article appears in Instapaper and then sync the Instapaper integration on Kobo.
 
@@ -35,7 +36,7 @@ The scheduled run is every day at **06:15 UTC** (07:15 in Prague winter time, 08
 6. Deploys only `site/` through the official GitHub Pages actions.
 7. Waits until the dated page is reachable, then calls `https://www.instapaper.com/api/add` over HTTPS using HTTP Basic Auth. HTTP 201 is required.
 
-Scheduled runs always notify Instapaper. Manual runs notify only when the workflow input is enabled. Instapaper receives a run-specific query parameter so a manual rerun fetches the newly generated page instead of reusing a cached copy.
+Scheduled runs always notify the primary Instapaper account and the optional secondary account when configured. Manual runs do the same only when the workflow input is enabled. Instapaper receives a run-specific query parameter so a manual rerun fetches the newly generated page instead of reusing a cached copy.
 
 ## Methodology
 
