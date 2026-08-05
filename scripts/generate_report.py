@@ -258,20 +258,15 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
     warning = ""
     if failures:
         warning = '<p><strong>Partial data:</strong> ' + html.escape("; ".join(failures)) + "</p>"
-    stock_rows = "".join(
-        "<tr>"
-        f'<th scope="row"><strong>{html.escape(r["label"])}</strong><br><small>{html.escape(r["name"])}</small></th>'
-        f'<td>€{r["price"]:,.2f}</td><td>{r["day"]:+.1f}%</td><td>{r["month"]:+.1f}%</td>'
-        f'<td>{r["from_high"]:+.1f}%</td><td>{html.escape(r["trend"])}</td><td>{r["as_of"]}</td>'
-        "</tr>" for r in stocks
+    stock_items = "".join(
+        f'<li><strong>{html.escape(r["label"])} — {html.escape(r["name"])}</strong><br>'
+        f'Price: €{r["price"]:,.2f}. One day: {r["day"]:+.1f}%. One month: {r["month"]:+.1f}%. '
+        f'From 52-week high: {r["from_high"]:+.1f}%. {html.escape(r["trend"])} As of {r["as_of"]}.</li>'
+        for r in stocks
     )
     stock_section = "<h2>Market watchlist</h2>"
-    if stock_rows:
-        stock_section += (
-            '<table><thead><tr><th>Instrument</th><th>Price</th><th>1 day</th><th>1 month</th>'
-            '<th>From 52-week high</th><th>Trend</th><th>As of</th></tr></thead>'
-            f'<tbody>{stock_rows}</tbody></table>'
-        )
+    if stock_items:
+        stock_section += f'<ul>{stock_items}</ul>'
     if stock_failures:
         stock_section += '<p><strong>Unavailable watchlist data:</strong> ' + html.escape("; ".join(stock_failures)) + "</p>"
     source_items = "".join(

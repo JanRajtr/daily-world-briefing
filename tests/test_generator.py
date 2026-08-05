@@ -107,6 +107,8 @@ class GeneratorTests(unittest.TestCase):
         }
         page, _, _ = generator.render_report("2025-01-02", [result], [], "now", [stock])
         self.assertIn("€10.00", page)
+        self.assertIn("One day: +1.0%. One month: +2.0%.", page)
+        self.assertNotIn("<table", page)
         self.assertLess(page.index("Market watchlist"), page.index("Main risk drivers"))
 
     def test_requested_csg_and_crypto_symbols_are_configured(self):
