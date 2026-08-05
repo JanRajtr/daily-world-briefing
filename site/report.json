@@ -1,18 +1,18 @@
 {
   "date": "2026-08-05",
-  "generated_at": "2026-08-05T10:16:01Z",
+  "generated_at": "2026-08-05T10:25:09Z",
   "market": {
     "date": "2026-08-05",
     "score": 22.242226658791996,
     "label": "Low",
-    "generated_at": "2026-08-05T10:15:45Z"
+    "generated_at": "2026-08-05T10:24:56Z"
   },
   "news": {
     "date": "2026-08-05",
-    "generated_at": "2026-08-05T10:16:01Z",
+    "generated_at": "2026-08-05T10:25:09Z",
     "ai_used": true,
     "model": "llama-3.3-70b-versatile",
-    "selected_items": 14,
-    "feed_failures": 1
+    "selected_items": 11,
+    "feed_failures": 0
   }
 }
