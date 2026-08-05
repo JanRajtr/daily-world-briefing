@@ -39,6 +39,26 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(first, merger.daily_reflection("2026-08-05"))
         self.assertNotEqual(first, merger.daily_reflection("2026-08-06"))
 
+    def test_dynamic_content_is_validated_and_rendered(self):
+        content = {
+            "reflection": "A fresh reflection generated for today.",
+            "meals": [
+                {"meal": meal, "name": f"Fresh {meal}", "recipe": "Combine measured wholesome ingredients, cook them carefully for twenty minutes, season to taste and serve warm with vegetables."}
+                for meal in ("Breakfast", "Lunch", "Snack", "Dinner")
+            ],
+            "longevity_tip": "A fresh, cautious tip for today.",
+        }
+        page = merger.merge_pages("<article>Market</article>", "<article>News</article>", "2026-08-05", [], content)
+        self.assertIn("A fresh reflection generated for today.", page)
+        self.assertIn("Fresh Breakfast", page)
+        self.assertIn("A fresh, cautious tip for today.", page)
+
+    def test_rejects_incomplete_ai_recipe(self):
+        content = merger.fallback_daily_content("2026-08-05")
+        content["meals"][0]["recipe"] = "Too short"
+        with self.assertRaisesRegex(ValueError, "recipe is incomplete"):
+            merger.validate_daily_content(content)
+
 
 if __name__ == "__main__":
     unittest.main()

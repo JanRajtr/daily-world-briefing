@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import re
 import urllib.parse
 import urllib.request
@@ -14,6 +15,7 @@ from datetime import date
 from pathlib import Path
 
 WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 WEATHER_LOCATIONS = {"Horoměřice": (50.1317, 14.3388), "Prague": (50.0755, 14.4378), "Česká Lípa": (50.6855, 14.5376)}
 WEATHER_CODES = {0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 48: "Freezing fog", 51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain", 71: "Light snow", 73: "Snow", 75: "Heavy snow", 80: "Light showers", 81: "Showers", 82: "Heavy showers", 85: "Light snow showers", 86: "Heavy snow showers", 95: "Thunderstorms", 96: "Thunderstorms with hail", 99: "Severe thunderstorms with hail"}
 
@@ -86,10 +88,10 @@ BUDDHIST_REFLECTIONS = (
 )
 
 
-def daily_reflection(report_date: str) -> str:
+def daily_reflection(report_date: str, generated_reflection: str = "") -> str:
     day = date.fromisoformat(report_date).toordinal()
     quote = QUOTES[day % len(QUOTES)]
-    reflection = BUDDHIST_REFLECTIONS[day % len(BUDDHIST_REFLECTIONS)]
+    reflection = generated_reflection or BUDDHIST_REFLECTIONS[day % len(BUDDHIST_REFLECTIONS)]
     return (
         '<h2>Daily reflection</h2>'
         f'<blockquote><p>“{html.escape(quote["text"])}”</p>'
@@ -127,23 +129,60 @@ def fetch_weather(report_date: str) -> list[dict]:
     return sorted(forecasts, key=lambda forecast: order[forecast["name"]])
 
 
-def wellbeing_sections(report_date: str, weather: list[dict]) -> str:
+def fallback_daily_content(report_date: str) -> dict:
     ordinal = date.fromisoformat(report_date).toordinal()
+    return {
+        "reflection": BUDDHIST_REFLECTIONS[ordinal % len(BUDDHIST_REFLECTIONS)],
+        "meals": [{"meal": meal, "name": name, "recipe": recipe} for meal, name, recipe in MEAL_PLANS[ordinal % len(MEAL_PLANS)]],
+        "longevity_tip": LONGEVITY_TIPS[ordinal % len(LONGEVITY_TIPS)],
+    }
+
+
+def validate_daily_content(content: dict) -> dict:
+    if not isinstance(content, dict):
+        raise ValueError("daily content is not an object")
+    reflection = str(content.get("reflection", "")).strip()
+    tip = str(content.get("longevity_tip", "")).strip()
+    meals = content.get("meals")
+    if not reflection or not tip or not isinstance(meals, list) or len(meals) != 4:
+        raise ValueError("daily content is incomplete")
+    expected = ("Breakfast", "Lunch", "Snack", "Dinner")
+    clean_meals = []
+    for expected_meal, meal in zip(expected, meals):
+        if not isinstance(meal, dict) or str(meal.get("meal", "")).strip().lower() != expected_meal.lower():
+            raise ValueError("daily meals must be breakfast, lunch, snack and dinner in order")
+        name, recipe = str(meal.get("name", "")).strip(), str(meal.get("recipe", "")).strip()
+        if not name or len(recipe) < 80:
+            raise ValueError(f"{expected_meal} recipe is incomplete")
+        clean_meals.append({"meal": expected_meal, "name": name, "recipe": recipe})
+    return {"reflection": reflection, "meals": clean_meals, "longevity_tip": tip}
+
+
+def generate_daily_content(report_date: str, api_key: str, model: str) -> dict:
+    prompt = f'''Create fresh daily wellbeing content for {report_date}. Return valid JSON only:
+{{"reflection":"...","meals":[{{"meal":"Breakfast","name":"...","recipe":"..."}},{{"meal":"Lunch","name":"...","recipe":"..."}},{{"meal":"Snack","name":"...","recipe":"..."}},{{"meal":"Dinner","name":"...","recipe":"..."}}],"longevity_tip":"..."}}
+Write in clear English for one adult in Czechia. Make the menu healthy, tasty, practical, varied, based on commonly available seasonal ingredients, and nutritionally balanced across the day. Every recipe must be complete in the text with ingredient quantities, temperatures and cooking times where relevant; never provide links. Avoid extreme diets, supplements, medical claims and raw high-risk animal foods. The longevity tip must be practical, evidence-aligned and cautious. The reflection should be an original calm 2-3 sentence Buddhist-informed perspective without inventing or quoting a historical source. Do not repeat content merely because the date repeats.'''
+    payload = json.dumps({"model": model, "temperature": 0.8, "response_format": {"type": "json_object"}, "messages": [{"role": "system", "content": "You are a careful wellbeing editor and practical home cook."}, {"role": "user", "content": prompt}]}).encode()
+    request = urllib.request.Request(GROQ_URL, data=payload, method="POST", headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "daily-world-briefing/1.0"})
+    with urllib.request.urlopen(request, timeout=90) as response:
+        result = json.loads(response.read())
+    return validate_daily_content(json.loads(result["choices"][0]["message"]["content"]))
+
+
+def wellbeing_sections(report_date: str, weather: list[dict], content: dict) -> str:
     weather_items = "".join(f'<li><h3>{html.escape(item["name"])}</h3><p>{html.escape(item["condition"])}. {item["minimum_c"]}–{item["maximum_c"]}°C; precipitation up to {item["rain_probability"]}%; wind up to {item["wind_kmh"]} km/h. Sunrise {html.escape(item["sunrise"])}; sunset {html.escape(item["sunset"])}.</p></li>' for item in weather)
     if not weather_items:
         weather_items = "<li>Today's forecast is temporarily unavailable.</li>"
-    meals = MEAL_PLANS[ordinal % len(MEAL_PLANS)]
-    meal_items = "".join(f'<li><h3>{html.escape(meal)}: {html.escape(name)}</h3><p>{html.escape(recipe)}</p></li>' for meal, name, recipe in meals)
-    tip = LONGEVITY_TIPS[ordinal % len(LONGEVITY_TIPS)]
+    meal_items = "".join(f'<li><h3>{html.escape(item["meal"])}: {html.escape(item["name"])}</h3><p>{html.escape(item["recipe"])}</p></li>' for item in content["meals"])
     return f'''<h2>Today's weather</h2><ul>{weather_items}</ul>
 <p><small>Forecast: Open-Meteo, for {html.escape(report_date)} in Europe/Prague local time. Conditions can change.</small></p>
 <h2>Healthy and tasty menu</h2><ol>{meal_items}</ol>
 <p>Portions are a practical starting point for one adult; adjust them for appetite, activity, allergies and dietary needs.</p>
-<h2>Longevity tip of the day</h2><p>{html.escape(tip)}</p>
+<h2>Longevity tip of the day</h2><p>{html.escape(content["longevity_tip"])}</p>
 <p><small>Food and longevity content is general information, not individualized medical or nutritional advice.</small></p>'''
 
 
-def merge_pages(market_page: str, news_page: str, report_date: str, weather: list[dict] | None = None) -> str:
+def merge_pages(market_page: str, news_page: str, report_date: str, weather: list[dict] | None = None, daily_content: dict | None = None) -> str:
     market = article_body(market_page)
     news = article_body(news_page)
     news = re.sub(
@@ -154,8 +193,9 @@ def merge_pages(market_page: str, news_page: str, report_date: str, weather: lis
         flags=re.DOTALL | re.IGNORECASE,
     )
     safe_date = html.escape(report_date)
-    reflection = daily_reflection(report_date)
-    wellbeing = wellbeing_sections(report_date, weather if weather is not None else fetch_weather(report_date))
+    content = validate_daily_content(daily_content) if daily_content is not None else fallback_daily_content(report_date)
+    reflection = daily_reflection(report_date, content["reflection"])
+    wellbeing = wellbeing_sections(report_date, weather if weather is not None else fetch_weather(report_date), content)
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Daily Market &amp; Wellbeing Briefing — {safe_date}</title>
@@ -175,6 +215,7 @@ def main() -> None:
     parser.add_argument("--news", required=True, help="News component directory")
     parser.add_argument("--output", default="site")
     parser.add_argument("--weather-fixture", help="Offline JSON weather fixture")
+    parser.add_argument("--wellbeing-fixture", help="Offline JSON AI-content fixture")
     args = parser.parse_args()
 
     market_dir, news_dir, output = Path(args.market), Path(args.news), Path(args.output)
@@ -185,10 +226,19 @@ def main() -> None:
 
     output.mkdir(parents=True, exist_ok=True)
     weather = json.loads(Path(args.weather_fixture).read_text(encoding="utf-8")) if args.weather_fixture else None
+    if args.wellbeing_fixture:
+        daily_content = validate_daily_content(json.loads(Path(args.wellbeing_fixture).read_text(encoding="utf-8")))
+    else:
+        api_key = os.environ.get("GROQ_API_KEY", "")
+        model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+        try:
+            daily_content = generate_daily_content(market_meta["date"], api_key, model) if api_key else fallback_daily_content(market_meta["date"])
+        except (OSError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+            daily_content = fallback_daily_content(market_meta["date"])
     page = merge_pages(
         (market_dir / "index.html").read_text(encoding="utf-8"),
         (news_dir / "index.html").read_text(encoding="utf-8"),
-        market_meta["date"], weather,
+        market_meta["date"], weather, daily_content,
     )
     (output / "index.html").write_text(page, encoding="utf-8")
     combined = {
