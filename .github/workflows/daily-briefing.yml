@@ -1,0 +1,133 @@
+name: Daily Market Risk Briefing
+
+on:
+  schedule:
+    # 06:15 UTC = 07:15 CET / 08:15 CEST. GitHub schedules use UTC.
+    - cron: "15 6 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      report_date:
+        description: "Optional report date (YYYY-MM-DD); blank means today in Europe/Prague"
+        required: false
+        type: string
+      notify_instapaper:
+        description: "Send the published URL to Instapaper"
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: market-risk-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      report_date: ${{ steps.date.outputs.report_date }}
+      should_notify: ${{ steps.date.outputs.should_notify }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Select report date and notification mode
+        id: date
+        env:
+          MANUAL_DATE: ${{ inputs.report_date }}
+          MANUAL_NOTIFY: ${{ inputs.notify_instapaper }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ -n "$MANUAL_DATE" ]]; then
+            REPORT_DATE="$MANUAL_DATE"
+          else
+            REPORT_DATE="$(TZ=Europe/Prague date +%F)"
+          fi
+          REPORT_DATE="$REPORT_DATE" python -c 'import os; from datetime import date; date.fromisoformat(os.environ["REPORT_DATE"])'
+          if [[ "$EVENT_NAME" == "schedule" ]]; then SHOULD_NOTIFY=true; else SHOULD_NOTIFY="${MANUAL_NOTIFY:-false}"; fi
+          echo "report_date=$REPORT_DATE" >> "$GITHUB_OUTPUT"
+          echo "should_notify=$SHOULD_NOTIFY" >> "$GITHUB_OUTPUT"
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Generate static report and archive
+        run: python scripts/generate_report.py --date "${{ steps.date.outputs.report_date }}" --output site
+
+      - name: Commit report to archive
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site
+          if git diff --cached --quiet; then
+            echo "Archive already contains this exact report."
+          else
+            git commit -m "briefing: ${{ steps.date.outputs.report_date }}"
+            git push
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Wait for the unique report URL
+        if: needs.build.outputs.should_notify == 'true'
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          REPORT_DATE: ${{ needs.build.outputs.report_date }}
+        run: |
+          REPORT_URL="${PAGE_URL%/}/reports/${REPORT_DATE}.html"
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error --location "$REPORT_URL" >/dev/null; then exit 0; fi
+            sleep 5
+          done
+          echo "Report URL was not reachable after deployment: $REPORT_URL" >&2
+          exit 1
+
+      - name: Send report to Instapaper
+        if: needs.build.outputs.should_notify == 'true'
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          REPORT_DATE: ${{ needs.build.outputs.report_date }}
+          INSTAPAPER_USERNAME: ${{ secrets.INSTAPAPER_USERNAME }}
+          INSTAPAPER_PASSWORD: ${{ secrets.INSTAPAPER_PASSWORD }}
+        run: |
+          test -n "$INSTAPAPER_USERNAME" || { echo "Missing INSTAPAPER_USERNAME secret" >&2; exit 1; }
+          REPORT_URL="${PAGE_URL%/}/reports/${REPORT_DATE}.html"
+          STATUS=$(curl --silent --show-error --output /tmp/instapaper-response.txt --write-out '%{http_code}' \
+            --user "$INSTAPAPER_USERNAME:$INSTAPAPER_PASSWORD" \
+            --data-urlencode "url=$REPORT_URL" \
+            --data-urlencode "title=Market Risk Briefing — $REPORT_DATE" \
+            https://www.instapaper.com/api/add)
+          if [[ "$STATUS" != "201" ]]; then
+            echo "Instapaper returned HTTP $STATUS" >&2
+            sed 's/./*/g' /tmp/instapaper-response.txt >&2
+            exit 1
+          fi
+          echo "Report added to Instapaper."
