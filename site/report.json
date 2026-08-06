@@ -1,15 +1,15 @@
 {
-  "date": "2026-08-05",
-  "generated_at": "2026-08-05T11:35:55Z",
+  "date": "2026-08-06",
+  "generated_at": "2026-08-06T08:51:04Z",
   "market": {
-    "date": "2026-08-05",
-    "score": 22.242226658791996,
+    "date": "2026-08-06",
+    "score": 22.49884255283043,
     "label": "Low",
-    "generated_at": "2026-08-05T11:35:52Z"
+    "generated_at": "2026-08-06T08:51:02Z"
   },
   "news": {
-    "date": "2026-08-05",
-    "generated_at": "2026-08-05T11:35:55Z",
+    "date": "2026-08-06",
+    "generated_at": "2026-08-06T08:51:04Z",
     "ai_used": false,
     "model": null,
     "selected_items": 0,
