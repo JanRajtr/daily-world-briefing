@@ -1,18 +1,33 @@
 {
   "date": "2026-08-06",
-  "generated_at": "2026-08-06T11:39:07Z",
+  "generated_at": "2026-08-06T13:02:03Z",
   "market": {
     "date": "2026-08-06",
     "score": 22.49884255283043,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-06T11:39:05Z"
+    "generated_at": "2026-08-06T13:01:59Z"
   },
   "news": {
     "date": "2026-08-06",
-    "generated_at": "2026-08-06T11:39:07Z",
+    "generated_at": "2026-08-06T13:02:03Z",
     "ai_used": false,
     "model": null,
     "selected_items": 0,
     "feed_failures": 0
+  },
+  "daily_content": {
+    "model": "groq/compound",
+    "reflection": {
+      "status": "error",
+      "attempts": 2,
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests",
+      "quote": "omitted",
+      "buddhist_teaching": "omitted"
+    },
+    "extras": {
+      "status": "error",
+      "attempts": 2,
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests"
+    }
   }
 }
