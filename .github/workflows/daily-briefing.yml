@@ -76,7 +76,7 @@ jobs:
       - name: Merge into one daily report
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GROQ_MODEL: llama-3.3-70b-versatile
+          GROQ_WEB_MODEL: groq/compound
         run: python scripts/merge_reports.py --market work/market --news work/news --output site
 
       - name: Commit daily report

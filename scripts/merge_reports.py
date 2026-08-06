@@ -8,6 +8,8 @@ import html
 import json
 import os
 import re
+import sys
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -167,14 +169,43 @@ def validate_daily_content(content: dict) -> dict:
     return clean
 
 
-def generate_daily_content(report_date: str, api_key: str, model: str) -> dict:
-    prompt = f'''Pro den {report_date} použij webové vyhledávání a vrať pouze platný JSON. Najdi: (1) ověřitelný citát, (2) skutečné učení lamy nebo buddhistického badatele, (3) čtyři zdravé recepty pro jednoho dospělého dostupné v Česku, (4) praktické doporučení pro zdravé stárnutí z autoritativního zdravotnického zdroje, (5) dnešní či bezprostředně nadcházející události relevantní pro portfolio a makroekonomiku, (6) vysvětlení pouze skutečně neobvyklých dnešních pohybů sledovaných trhů a (7) kvalitní českou kulturní nebo historickou poznámku vztahující se k datu. Sledované nástroje a témata jsou SPYI, SPYL, SEC0, XNAS, QUTM, EGLN/XAU, XAIX, IWMO, ZPRV, NVS, NW0/CSG, ASME/ASML, BTC a ADA. Vše věrně přelož nebo shrň do češtiny; nic nevymýšlej. Každá položka musí mít přímý webový zdroj. Pokud některou část nenajdeš, neověříš nebo není relevantní, vrať null či prázdné pole.
-Schéma: {{"quote":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null,"buddhist_teaching":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null,"meals":[{{"meal":"Breakfast|Lunch|Snack|Dinner","name":"...","recipe":"úplný recept s množstvím a časy","source_title":"...","source_url":"https://..."}}]|null,"longevity_tip":{{"text":"...","author":"organizace nebo autor","work":"název stránky","url":"https://..."}}|null,"portfolio_events":[{{"title":"...","text":"...","url":"https://..."}}],"market_explanations":[{{"title":"...","text":"...","url":"https://..."}}],"cultural_note":{{"text":"...","author":"instituce nebo autor","work":"název stránky","url":"https://..."}}|null}}. Pole meal musí být v pořadí Breakfast, Lunch, Snack, Dinner.'''
+def request_groq_json(prompt: str, api_key: str, model: str) -> dict:
     payload = json.dumps({"model": model, "temperature": 0, "response_format": {"type": "json_object"}, "compound_custom": {"tools": {"enabled_tools": ["web_search", "visit_website"]}}, "messages": [{"role": "system", "content": "Jsi přesný český rešeršér a překladatel. Bez dohledatelného webového zdroje obsah vynecháš."}, {"role": "user", "content": prompt}]}).encode()
     request = urllib.request.Request(GROQ_URL, data=payload, method="POST", headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "daily-world-briefing/1.0"})
     with urllib.request.urlopen(request, timeout=90) as response:
         result = json.loads(response.read())
-    return validate_daily_content(json.loads(result["choices"][0]["message"]["content"]))
+    value = json.loads(result["choices"][0]["message"]["content"])
+    if not isinstance(value, dict):
+        raise ValueError("Groq response is not a JSON object")
+    return value
+
+
+def generate_with_retries(label: str, prompt: str, api_key: str, model: str, attempts: int = 2) -> tuple[dict, dict]:
+    last_error = "unknown error"
+    for attempt in range(1, attempts + 1):
+        try:
+            return request_groq_json(prompt, api_key, model), {"status": "ok", "attempts": attempt}
+        except (OSError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as error:
+            last_error = f"{type(error).__name__}: {error}"
+            print(f"Groq {label} attempt {attempt}/{attempts} failed: {last_error}", file=sys.stderr)
+            if attempt < attempts:
+                time.sleep(2)
+    return {}, {"status": "error", "attempts": attempts, "reason": last_error}
+
+
+def generate_daily_content(report_date: str, api_key: str, model: str) -> tuple[dict, dict]:
+    reflection_prompt = f'''Pro den {report_date} použij webové vyhledávání a vrať pouze platný JSON. Najdi (1) ověřitelný historický citát a (2) skutečné, konkrétní učení buddhistického učitele nebo badatele. Vše věrně přelož nebo shrň do češtiny; nic nevymýšlej. Každá položka musí mít autora, dílo nebo kontext a přímý webový zdroj. Pokud položku neověříš, vrať null.
+Schéma: {{"quote":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null,"buddhist_teaching":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null}}.'''
+    extras_prompt = f'''Pro den {report_date} použij webové vyhledávání a vrať pouze platný JSON. Najdi: (1) čtyři zdravé recepty pro jednoho dospělého dostupné v Česku, (2) praktické doporučení pro zdravé stárnutí z autoritativního zdravotnického zdroje, (3) dnešní či bezprostředně nadcházející události relevantní pro portfolio a makroekonomiku, (4) vysvětlení pouze skutečně neobvyklých dnešních pohybů sledovaných trhů a (5) kvalitní českou kulturní nebo historickou poznámku vztahující se k datu. Sledované nástroje a témata jsou SPYI, SPYL, SEC0, XNAS, QUTM, EGLN/XAU, XAIX, IWMO, ZPRV, NVS, NW0/CSG, ASME/ASML, BTC a ADA. Vše věrně přelož nebo shrň do češtiny; nic nevymýšlej. Každá položka musí mít přímý webový zdroj. Pokud některou část nenajdeš, neověříš nebo není relevantní, vrať null či prázdné pole.
+Schéma: {{"meals":[{{"meal":"Breakfast|Lunch|Snack|Dinner","name":"...","recipe":"úplný recept s množstvím a časy","source_title":"...","source_url":"https://..."}}]|null,"longevity_tip":{{"text":"...","author":"organizace nebo autor","work":"název stránky","url":"https://..."}}|null,"portfolio_events":[{{"title":"...","text":"...","url":"https://..."}}],"market_explanations":[{{"title":"...","text":"...","url":"https://..."}}],"cultural_note":{{"text":"...","author":"instituce nebo autor","work":"název stránky","url":"https://..."}}|null}}. Pole meal musí být v pořadí Breakfast, Lunch, Snack, Dinner.'''
+    reflection, reflection_status = generate_with_retries("reflection", reflection_prompt, api_key, model)
+    extras, extras_status = generate_with_retries("extras", extras_prompt, api_key, model)
+    content = validate_daily_content({**extras, **reflection})
+    reflection_status["quote"] = "present" if content.get("quote") else "omitted"
+    reflection_status["buddhist_teaching"] = "present" if content.get("buddhist_teaching") else "omitted"
+    if reflection_status["status"] == "ok" and reflection_status["buddhist_teaching"] == "omitted":
+        reflection_status["buddhist_teaching_reason"] = "Groq returned no teaching with text, author, work, and a valid source URL"
+    return content, {"model": model, "reflection": reflection_status, "extras": extras_status}
 
 
 def wellbeing_sections(report_date: str, weather: list[dict], content: dict, calendar: dict | None = None, fx: dict | None = None, air_quality: list[dict] | None = None) -> str:
@@ -289,15 +320,18 @@ def main() -> None:
         air_quality = fetch_air_quality()
     except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
         pass
+    generation = {"status": "fixture"} if args.wellbeing_fixture else {"status": "not_requested"}
     if args.wellbeing_fixture:
         daily_content = validate_daily_content(json.loads(Path(args.wellbeing_fixture).read_text(encoding="utf-8")))
     else:
         api_key = os.environ.get("GROQ_API_KEY", "")
         model = os.environ.get("GROQ_WEB_MODEL", "groq/compound")
-        try:
-            daily_content = generate_daily_content(market_meta["date"], api_key, model) if api_key else {}
-        except (OSError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+        if api_key:
+            daily_content, generation = generate_daily_content(market_meta["date"], api_key, model)
+        else:
             daily_content = {}
+            generation = {"status": "error", "reason": "GROQ_API_KEY is not configured"}
+            print("Daily web content omitted: GROQ_API_KEY is not configured", file=sys.stderr)
     page = merge_pages(
         (market_dir / "index.html").read_text(encoding="utf-8"),
         (news_dir / "index.html").read_text(encoding="utf-8"),
@@ -309,6 +343,7 @@ def main() -> None:
         "generated_at": news_meta["generated_at"],
         "market": market_meta,
         "news": news_meta,
+        "daily_content": generation,
     }
     (output / "report.json").write_text(json.dumps(combined, indent=2) + "\n", encoding="utf-8")
     print(f"Merged market and news components into {output / 'index.html'}")

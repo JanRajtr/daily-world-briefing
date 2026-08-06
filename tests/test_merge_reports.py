@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location("merger", Path(__file__).parents[1] / "scripts" / "merge_reports.py")
 merger = importlib.util.module_from_spec(SPEC)
@@ -98,6 +99,37 @@ class MergeTests(unittest.TestCase):
         self.assertNotIn("Economy news", page)
         self.assertNotIn("Global economy and portfolio", page)
         self.assertIn("Market situation", page)
+
+    @patch.object(merger.time, "sleep")
+    @patch.object(merger, "request_groq_json")
+    def test_retries_failed_groq_request_and_reports_error(self, request, _sleep):
+        request.side_effect = OSError("temporary outage")
+        content, status = merger.generate_with_retries("reflection", "prompt", "key", "model")
+        self.assertEqual(content, {})
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(status["status"], "error")
+        self.assertIn("temporary outage", status["reason"])
+
+    @patch.object(merger, "generate_with_retries")
+    def test_reflection_survives_failure_in_other_daily_content(self, generate):
+        generate.side_effect = [
+            ({"quote": self.sourced_content()["quote"], "buddhist_teaching": self.sourced_content()["buddhist_teaching"]}, {"status": "ok", "attempts": 1}),
+            ({}, {"status": "error", "attempts": 2, "reason": "timeout"}),
+        ]
+        content, status = merger.generate_daily_content("2026-08-06", "key", "groq/compound")
+        self.assertEqual(content["buddhist_teaching"]["author"], "Lama")
+        self.assertEqual(status["reflection"]["buddhist_teaching"], "present")
+        self.assertEqual(status["extras"]["status"], "error")
+
+    @patch.object(merger, "generate_with_retries")
+    def test_reports_why_buddhist_teaching_was_rejected(self, generate):
+        generate.side_effect = [
+            ({"buddhist_teaching": {"text": "Učení bez zdroje", "author": "Lama", "work": "Výklad"}}, {"status": "ok", "attempts": 1}),
+            ({}, {"status": "ok", "attempts": 1}),
+        ]
+        content, status = merger.generate_daily_content("2026-08-06", "key", "groq/compound")
+        self.assertNotIn("buddhist_teaching", content)
+        self.assertIn("valid source URL", status["reflection"]["buddhist_teaching_reason"])
 
 
 if __name__ == "__main__":
