@@ -1,10 +1,12 @@
-# Daily Market & Wellbeing Briefing
+# Denní přehled trhů a zdravého života
 
-A fully autonomous combined briefing. GitHub Actions computes the transparent market-risk score and EUR watchlist, collects reputable public sources for the global economy, adds live local weather for Horoměřice, Prague and Česká Lípa, and asks Groq to create a fresh complete four-meal recipe plan, practical longevity tip and Buddhist-informed reflection. It then creates one Kobo/Instapaper-friendly static article. Geopolitics and medical/science news are currently disabled, while their source definitions remain available for future use.
+Plně automatizovaný český přehled. GitHub Actions počítá transparentní skóre tržního rizika a seznam nástrojů v EUR, sbírá důvěryhodné veřejné ekonomické zdroje a přidává místní počasí, jídelníček a tip pro zdravé stárnutí. Groq slouží především k věrnému překladu a zkrácení dodaného zdrojového obsahu, nikoli k vymýšlení faktů.
 
-The historical quotation remains a verified, source-linked rotation. Market formulas, portfolio instruments, source lists, location coordinates and the workflow schedule are explicit configuration rather than AI-generated content. If Groq is temporarily unavailable or returns incomplete content, a small validated fallback rotation keeps the daily report publishable.
+Praktická ranní část může dále obsahovat český svátek a státní svátek, kurzovní lístek ČNB, kvalitu ovzduší a významný pyl, UV či jiné mimořádné počasí, události relevantní pro portfolio, zdrojové vysvětlení neobvyklých tržních pohybů a českou kulturní nebo historickou stopu dne. Každá síťová část se při nedostupnosti jednoduše vynechá.
 
-Each edition opens with a rotating, source-linked historical quotation and a short original reflection informed by Buddhist philosophy. The rotation is deterministic by date, so rerunning an edition never silently changes its opening.
+Citát, buddhistické učení, recepty a tip pro zdravé stárnutí se každý den vyhledávají na webu pomocí Groq Compound. Každá zobrazená položka musí mít autora či vydavatele, kontext a přímý odkaz na zdroj. Nedohledaná nebo neplatná část se přeskočí; repozitář neobsahuje žádnou obsahovou rotaci ani náhradní hodnoty.
+
+Je-li při daném spuštění nalezen ověřitelný historický citát a skutečná myšlenka buddhistického učitele či badatele, vydání jimi začíná. Bez výsledku se tato část nezobrazí.
 
 ## What it produces
 
@@ -21,7 +23,7 @@ The HTML uses a single semantic `<article>`, real headings and lists, no JavaScr
 2. Upload the *contents* of this bundle to the repository root (so `.github/workflows/daily-briefing.yml` is at that exact path) and commit to the default branch.
 3. Open **Settings → Pages**. Under **Build and deployment → Source**, choose **GitHub Actions**.
 4. Open **Settings → Secrets and variables → Actions → New repository secret** and add:
-   - `GROQ_API_KEY` — a Groq API key used for the source-grounded economy synthesis and fresh daily recipes, longevity tip and reflection.
+   - `GROQ_API_KEY` — klíč Groq používaný pro zdrojově podložené české shrnutí ekonomických zpráv a webovou rešerši s překladem citátů, učení, receptů a zdravotního tipu.
    - `INSTAPAPER_USERNAME` — the Instapaper email address or username.
    - `INSTAPAPER_PASSWORD` — the account password. If the account has no password, save an empty value if GitHub permits it; otherwise use any placeholder value, which the Simple API documentation says is accepted for passwordless accounts.
    - Optional second account: `INSTAPAPER_USERNAME_SECONDARY` and `INSTAPAPER_PASSWORD_SECONDARY`. When the secondary username is absent, delivery to the primary account continues normally.

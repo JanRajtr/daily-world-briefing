@@ -209,7 +209,7 @@ def stock_summary(instrument: Instrument, rows: list[tuple[date, float]], curren
     return {
         "label": instrument.label, "name": instrument.name, "price": current,
         "day": 100 * (current / day_base - 1), "month": 100 * (current / month_base - 1),
-        "from_high": 100 * (current / high - 1), "trend": "Above 50-day avg." if current >= ma50 else "Below 50-day avg.",
+        "from_high": 100 * (current / high - 1), "trend": "Nad 50denním průměrem" if current >= ma50 else "Pod 50denním průměrem",
         "as_of": trailing[-1][0].isoformat(), "source_symbol": instrument.feed_symbol,
     }
 
@@ -224,14 +224,14 @@ def gold_summary(gold_rows, fx_rows):
 
 def risk_label(score):
     if score < 25:
-        return "Low", "low"
+        return "Nízké", "low"
     if score < 45:
-        return "Guarded", "guarded"
+        return "Obezřetné", "guarded"
     if score < 65:
-        return "Elevated", "elevated"
+        return "Zvýšené", "elevated"
     if score < 80:
-        return "High", "high"
-    return "Severe", "severe"
+        return "Vysoké", "high"
+    return "Kritické", "severe"
 
 
 def fmt(value, unit):
@@ -241,25 +241,25 @@ def fmt(value, unit):
 
 def render_market_situation(stocks):
     if not stocks:
-        return "<h2>Market situation</h2><p>Watchlist data is unavailable.</p>"
+        return "<h2>Situace na trzích</h2><p>Data sledovaných nástrojů nejsou dostupná.</p>"
     total = len(stocks)
     day_up = sum(r["day"] > 0 for r in stocks)
     day_down = sum(r["day"] < 0 for r in stocks)
     month_up = sum(r["month"] > 0 for r in stocks)
     month_down = sum(r["month"] < 0 for r in stocks)
-    above_trend = sum(r["trend"].startswith("Above") for r in stocks)
+    above_trend = sum(r["trend"].startswith("Nad") for r in stocks)
     best = max(stocks, key=lambda r: r["month"])
     worst = min(stocks, key=lambda r: r["month"])
     return (
-        "<h2>Market situation</h2><p>"
-        f"One day: {day_up} of {total} instruments rose and {day_down} fell; "
-        f"the median move was {statistics.median(r['day'] for r in stocks):+.1f}%. "
-        f"One month: {month_up} rose and {month_down} fell; "
-        f"the median move was {statistics.median(r['month'] for r in stocks):+.1f}%. "
-        f"{above_trend} of {total} are above their 50-day average, and the median instrument is "
-        f"{statistics.median(r['from_high'] for r in stocks):+.1f}% from its 52-week high. "
-        f"Strongest over one month: {html.escape(best['label'])} ({best['month']:+.1f}%). "
-        f"Weakest: {html.escape(worst['label'])} ({worst['month']:+.1f}%).</p>"
+        "<h2>Situace na trzích</h2><p>"
+        f"Za den vzrostlo {day_up} z {total} nástrojů a {day_down} kleslo; "
+        f"medián změny činil {statistics.median(r['day'] for r in stocks):+.1f} %. "
+        f"Za měsíc vzrostlo {month_up} nástrojů a {month_down} kleslo; "
+        f"medián změny činil {statistics.median(r['month'] for r in stocks):+.1f} %. "
+        f"Nad 50denním průměrem je {above_trend} z {total} nástrojů a medián nástroje je "
+        f"{statistics.median(r['from_high'] for r in stocks):+.1f} % od 52týdenního maxima. "
+        f"Nejsilnější za měsíc: {html.escape(best['label'])} ({best['month']:+.1f} %). "
+        f"Nejslabší: {html.escape(worst['label'])} ({worst['month']:+.1f} %).</p>"
     )
 
 
@@ -274,26 +274,26 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
     oldest = min(r["as_of"] for r in results)
     metric_items = "".join(
         f'<li><strong>{html.escape(r["name"])}.</strong> '
-        f'Latest: {fmt(r["value"], r["unit"])}. Risk: {r["score"]:.0f}/100. '
-        f'As of {r["as_of"]}.</li>' for r in results
+        f'Poslední hodnota: {fmt(r["value"], r["unit"])}. Riziko: {r["score"]:.0f}/100. '
+        f'Ke dni {r["as_of"]}.</li>' for r in results
     )
     driver_items = "".join(f'<li><strong>{html.escape(r["name"])}</strong>: {r["score"]:.0f}/100 — {html.escape(r["note"])}</li>' for r in drivers)
     positive_items = "".join(f'<li><strong>{html.escape(r["name"])}</strong>: {r["score"]:.0f}/100</li>' for r in positives)
     warning = ""
     if failures:
-        warning = '<p><strong>Partial data:</strong> ' + html.escape("; ".join(failures)) + "</p>"
+        warning = '<p><strong>Neúplná data:</strong> ' + html.escape("; ".join(failures)) + "</p>"
     stock_items = "".join(
         f'<li><strong>{html.escape(r["label"])} — {html.escape(r["name"])}</strong><br>'
-        f'Price: €{r["price"]:,.2f}. One day: {r["day"]:+.1f}%. One month: {r["month"]:+.1f}%. '
-        f'From 52-week high: {r["from_high"]:+.1f}%. {html.escape(r["trend"])}</li>'
+        f'Cena: €{r["price"]:,.2f}. Za den: {r["day"]:+.1f} %. Za měsíc: {r["month"]:+.1f} %. '
+        f'Od 52týdenního maxima: {r["from_high"]:+.1f} %. {html.escape(r["trend"])}</li>'
         for r in stocks
     )
     market_situation = render_market_situation(stocks)
-    stock_section = "<h2>Market watchlist</h2>"
+    stock_section = "<h2>Sledované tržní nástroje</h2>"
     if stock_items:
         stock_section += f'<ul>{stock_items}</ul>'
     if stock_failures:
-        stock_section += '<p><strong>Unavailable watchlist data:</strong> ' + html.escape("; ".join(stock_failures)) + "</p>"
+        stock_section += '<p><strong>Nedostupná data sledovaných nástrojů:</strong> ' + html.escape("; ".join(stock_failures)) + "</p>"
     source_items = "".join(
         f'<li>{html.escape(r["name"])} — {html.escape(r["source_label"])} ('
         + ", ".join(
@@ -304,20 +304,20 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
         for r in results
     )
     return f'''<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Market Risk Component — {report_date}</title><meta name="description" content="Rules-based market-risk component for the daily world briefing on {report_date}.">
+<html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tržní riziko — {report_date}</title><meta name="description" content="Pravidlová složka tržního rizika pro denní přehled {report_date}.">
 </head><body><article>
 {market_situation}
-<p><strong>Composite risk: {score:.0f}/100 — {label}.</strong> A weighted reading from {len(results)} public market and macro indicators. Higher means more defensive conditions.</p>
+<p><strong>Souhrnné riziko: {score:.0f}/100 — {label}.</strong> Vážený výpočet z {len(results)} veřejných tržních a makroekonomických ukazatelů. Vyšší hodnota znamená defenzivnější podmínky.</p>
 {stock_section}
 {warning}
-<h2>Main risk drivers</h2><ol>{driver_items}</ol>
-<h2>Relative stabilizers</h2><ul>{positive_items}</ul>
-<h2>Indicator dashboard</h2><ul>{metric_items}</ul>
-<h2>How to read this</h2><p>This is a mechanical monitoring signal, not a forecast or investment recommendation. Scores use fixed threshold bands and are reweighted across available indicators. Monthly and weekly series update less often than market prices.</p>
-<h2>Sources</h2><ul>{source_items}</ul>
-<p>Generated {generated_at} UTC. Risk observations are downloaded from FRED. Watchlist prices come from Yahoo Finance's chart feed; XAU uses COMEX gold converted to euros with EUR/USD. Methodology and thresholds are documented in the repository README.</p>
-<p><strong>Report date:</strong> {report_date}. Risk data observations range from {oldest} to {freshest}.</p>
+<h2>Hlavní zdroje rizika</h2><ol>{driver_items}</ol>
+<h2>Relativní stabilizátory</h2><ul>{positive_items}</ul>
+<h2>Přehled ukazatelů</h2><ul>{metric_items}</ul>
+<h2>Jak výsledek číst</h2><p>Jde o mechanický monitorovací signál, nikoli o předpověď či investiční doporučení. Skóre používá pevná prahová pásma a převažuje se podle dostupných ukazatelů. Měsíční a týdenní řady se aktualizují méně často než tržní ceny.</p>
+<h2>Zdroje</h2><ul>{source_items}</ul>
+<p>Vygenerováno {generated_at} UTC. Rizikové ukazatele pocházejí z FRED. Ceny sledovaných nástrojů pocházejí z rozhraní Yahoo Finance; XAU používá zlato COMEX převedené na eura kurzem EUR/USD. Metodika a prahové hodnoty jsou popsány v README repozitáře.</p>
+<p><strong>Datum přehledu:</strong> {report_date}. Pozorování rizikových dat sahají od {oldest} do {freshest}.</p>
 </article></body></html>''', score, label
 
 

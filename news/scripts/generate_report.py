@@ -395,11 +395,11 @@ def ai_prompt(items: list[Item], report_date: date) -> str:
         record = {key: value for key, value in asdict(item).items() if key not in ("score",)}
         record["summary"] = record["summary"][:900]
         records.append(record)
-    return f"""Create a concise English daily briefing for {report_date.isoformat()} using ONLY the supplied records.
+    return f"""Vytvoř stručný denní přehled v přirozené češtině pro {report_date.isoformat()} POUZE z dodaných záznamů. Překládej a zkracuj věrně; nevymýšlej souvislosti ani fakta.
 Return valid JSON, with no markdown, in this exact shape:
 {{"overview":["..."],"sections":{{"economy":[STORY]}}}}
-Each STORY is {{"title":"...","summary":"2-3 factual sentences","why_it_matters":"...","item_ids":["id"],"evidence":"label"}}.
-Use 4-6 economy stories when material permits. Merge records about the same event and cite all their IDs. Never add a fact absent from the records. Treat company and government claims as attributed claims, not independent confirmation. Explain relevant watchlist connections without forecasting prices. If evidence is thin, omit the story.
+Each STORY is {{"title":"...","summary":"2-3 factual sentences in Czech","why_it_matters":"...","item_ids":["id"],"evidence":"label in Czech"}}.
+Use 4-6 economy stories when material permits. Merge records about the same event and cite all their IDs. Never add a fact absent from the records. Treat company and government claims as attributed claims, not independent confirmation. Explain relevant watchlist connections without forecasting prices. If evidence is thin, omit the story. Veškerý redakční text musí být česky; vlastní názvy a názvy zdrojů mohou zůstat v originále.
 RECORDS:
 {json.dumps(records, ensure_ascii=False)}"""
 
@@ -411,7 +411,7 @@ def call_groq(items: list[Item], report_date: date, api_key: str, model: str) ->
         "max_completion_tokens": 2800,
         "response_format": {"type": "json_object"},
         "messages": [
-            {"role": "system", "content": "You are a careful news editor. Ground every statement in supplied records."},
+            {"role": "system", "content": "Jsi pečlivý český překladatel a editor zpráv. Každé tvrzení opíráš výhradně o dodané záznamy."},
             {"role": "user", "content": ai_prompt(items, report_date)},
         ],
     }).encode()
@@ -473,16 +473,16 @@ def fallback_briefing(items: list[Item]) -> dict:
             })
         sections[section] = stories
     overview = (
-        ["No sufficiently relevant recent economy items were available from the configured feeds."]
+        ["V nastavených zdrojích nebyly dostatečně relevantní nedávné ekonomické zprávy."]
         if not items else
-        ["AI summarization was unavailable; this edition uses source titles and public feed excerpts."]
+        ["Překlad nebyl dostupný; toto vydání používá původní názvy a úryvky z veřejných kanálů."]
     )
     return {"overview": overview, "sections": sections}
 
 
 def render_report(report_date: date, briefing: dict, items: list[Item], failures: list[str], generated_at: str, ai_used: bool) -> str:
     by_id = {item.id: item for item in items}
-    labels = {"economy": "Global economy and portfolio"}
+    labels = {"economy": "Světová ekonomika a portfolio"}
     overview = "".join(f"<li>{html.escape(value)}</li>" for value in briefing.get("overview", []))
     sections_html = []
     for section in SECTIONS:
@@ -502,26 +502,26 @@ def render_report(report_date: date, briefing: dict, items: list[Item], failures
             stories_html.append(
                 f'<li><h3>{html.escape(story["title"])}</h3>'
                 f'<p>{html.escape(story["summary"])}</p>'
-                f'<p><strong>Why it matters:</strong> {html.escape(story.get("why_it_matters", ""))}</p>'
-                + (f'<p><strong>Watchlist:</strong> {html.escape(", ".join(sorted(watchlist)))}</p>' if watchlist else "")
-                + (f'<p><strong>Evidence/source type:</strong> {html.escape(label)}</p>' if label else "")
-                + f'<p><strong>Sources:</strong> {"; ".join(sources)}</p></li>'
+                f'<p><strong>Proč je to důležité:</strong> {html.escape(story.get("why_it_matters", ""))}</p>'
+                + (f'<p><strong>Sledované nástroje:</strong> {html.escape(", ".join(sorted(watchlist)))}</p>' if watchlist else "")
+                + (f'<p><strong>Typ důkazu/zdroje:</strong> {html.escape(label)}</p>' if label else "")
+                + f'<p><strong>Zdroje:</strong> {"; ".join(sources)}</p></li>'
             )
-        empty = "<p>No sufficiently relevant items were available from the configured feeds.</p>" if not stories_html else ""
+        empty = "<p>V nastavených zdrojích nebyly dostatečně relevantní zprávy.</p>" if not stories_html else ""
         sections_html.append(f'<h2>{labels[section]}</h2>{empty}<ol>{"".join(stories_html)}</ol>')
-    warning = f'<p><strong>Feed warnings:</strong> {html.escape("; ".join(failures))}</p>' if failures else ""
-    mode = "AI-assisted, source-grounded synthesis" if ai_used else "extractive fallback"
+    warning = f'<p><strong>Upozornění zdrojů:</strong> {html.escape("; ".join(failures))}</p>' if failures else ""
+    mode = "strojový překlad a shrnutí založené na zdrojích" if ai_used else "výpis původních úryvků bez překladu"
     return f'''<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Daily Economy Briefing — {report_date.isoformat()}</title><meta name="description" content="Daily briefing on the global economy and portfolio.">
+<html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Denní ekonomický přehled — {report_date.isoformat()}</title><meta name="description" content="Denní přehled světové ekonomiky a portfolia.">
 </head><body><article>
-<p><strong>Daily Economy Briefing — {report_date.isoformat()}.</strong> Global economy and portfolio.</p>
-<h2>Today in brief</h2><ul>{overview}</ul>
+<p><strong>Denní ekonomický přehled — {report_date.isoformat()}.</strong> Světová ekonomika a portfolio.</p>
+<h2>Dnes stručně</h2><ul>{overview}</ul>
 {''.join(sections_html)}
 {warning}
-<h2>Editorial method</h2>
-<p>Economic sources are ranked by authority and independence. Company and government statements are attributed and are not treated as independent confirmation. Geopolitics and medical/science news are currently disabled. This report is informational and is not investment advice.</p>
-<p>Generated {generated_at} UTC using {mode}. The system processed {len(items)} selected public-feed records. Links lead to the original sources.</p>
+<h2>Redakční metoda</h2>
+<p>Ekonomické zdroje jsou řazeny podle autority a nezávislosti. Firemní a vládní tvrzení jsou vždy připsána původci a nepovažují se za nezávislé potvrzení. Geopolitické a medicínské/vědecké zprávy jsou nyní vypnuté. Přehled má informační charakter a není investičním doporučením.</p>
+<p>Vygenerováno {generated_at} UTC; režim: {mode}. Systém zpracoval {len(items)} vybraných záznamů z veřejných kanálů. Odkazy vedou na původní zdroje.</p>
 </article></body></html>'''
 
 

@@ -20,9 +20,9 @@ class GeneratorTests(unittest.TestCase):
         self.assertEqual(generator.bands(99, (0, 10, 20, 30, 40)), 100)
 
     def test_risk_labels_cover_boundaries(self):
-        self.assertEqual(generator.risk_label(24.9)[0], "Low")
-        self.assertEqual(generator.risk_label(25)[0], "Guarded")
-        self.assertEqual(generator.risk_label(80)[0], "Severe")
+        self.assertEqual(generator.risk_label(24.9)[0], "Nízké")
+        self.assertEqual(generator.risk_label(25)[0], "Obezřetné")
+        self.assertEqual(generator.risk_label(80)[0], "Kritické")
 
     def test_curve_uses_latest_shared_date(self):
         data = {
@@ -58,10 +58,10 @@ class GeneratorTests(unittest.TestCase):
         page, _, _ = generator.render_report("2025-01-02", [result], [], "2025-01-02T00:00:00Z")
         self.assertIn("/series/DGS10", page)
         self.assertIn("/series/DGS2", page)
-        self.assertIn("Market watchlist", page)
+        self.assertIn("Sledované tržní nástroje", page)
         self.assertNotIn("<style", page)
         self.assertNotIn("<h1", page)
-        self.assertIn("Latest: +0.10 pp. Risk: 50/100.", page)
+        self.assertIn("Poslední hodnota: +0.10 pp. Riziko: 50/100.", page)
 
     def test_existing_report_is_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -80,7 +80,7 @@ class GeneratorTests(unittest.TestCase):
             ):
                 generator.main()
             self.assertNotEqual(report.read_text(), "original")
-            self.assertIn("Market Risk Component", report.read_text())
+            self.assertIn("Tržní riziko", report.read_text())
 
     def test_stock_summary_calculates_euro_watchlist_fields(self):
         rows = [(date(2025, 1, day), 100 + day) for day in range(1, 29)]
@@ -88,7 +88,7 @@ class GeneratorTests(unittest.TestCase):
         self.assertEqual(item["price"], 128)
         self.assertGreater(item["day"], 0)
         self.assertEqual(item["from_high"], 0)
-        self.assertEqual(item["trend"], "Above 50-day avg.")
+        self.assertEqual(item["trend"], "Nad 50denním průměrem")
 
     def test_stock_summary_rejects_non_euro_quote(self):
         rows = [(date(2025, 1, 1), 100), (date(2025, 1, 2), 101)]
@@ -107,26 +107,26 @@ class GeneratorTests(unittest.TestCase):
         }
         page, _, _ = generator.render_report("2025-01-02", [result], [], "now", [stock])
         self.assertIn("€10.00", page)
-        self.assertIn("One day: +1.0%. One month: +2.0%.", page)
+        self.assertIn("Za den: +1.0 %. Za měsíc: +2.0 %.", page)
         self.assertNotIn("Above 50-day avg. As of", page)
         self.assertNotIn("<table", page)
-        self.assertLess(page.index("Market situation"), page.index("Composite risk"))
-        self.assertLess(page.index("Composite risk"), page.index("Market watchlist"))
-        self.assertGreater(page.index("Report date"), page.index("Sources"))
-        self.assertLess(page.index("Market watchlist"), page.index("Main risk drivers"))
+        self.assertLess(page.index("Situace na trzích"), page.index("Souhrnné riziko"))
+        self.assertLess(page.index("Souhrnné riziko"), page.index("Sledované tržní nástroje"))
+        self.assertGreater(page.index("Datum přehledu"), page.index("Zdroje"))
+        self.assertLess(page.index("Sledované tržní nástroje"), page.index("Hlavní zdroje rizika"))
 
     def test_market_situation_summarizes_watchlist_breadth_and_extremes(self):
         stocks = [
-            {"label": "A", "day": 2, "month": 5, "from_high": -1, "trend": "Above 50-day avg."},
-            {"label": "B", "day": -1, "month": -4, "from_high": -9, "trend": "Below 50-day avg."},
-            {"label": "C", "day": 1, "month": 2, "from_high": -3, "trend": "Above 50-day avg."},
+            {"label": "A", "day": 2, "month": 5, "from_high": -1, "trend": "Nad 50denním průměrem"},
+            {"label": "B", "day": -1, "month": -4, "from_high": -9, "trend": "Pod 50denním průměrem"},
+            {"label": "C", "day": 1, "month": 2, "from_high": -3, "trend": "Nad 50denním průměrem"},
         ]
         summary = generator.render_market_situation(stocks)
-        self.assertIn("2 of 3 instruments rose and 1 fell", summary)
-        self.assertIn("the median move was +1.0%", summary)
-        self.assertIn("2 of 3 are above their 50-day average", summary)
-        self.assertIn("Strongest over one month: A (+5.0%)", summary)
-        self.assertIn("Weakest: B (-4.0%)", summary)
+        self.assertIn("vzrostlo 2 z 3 nástrojů a 1 kleslo", summary)
+        self.assertIn("medián změny činil +1.0 %", summary)
+        self.assertIn("Nad 50denním průměrem je 2 z 3", summary)
+        self.assertIn("Nejsilnější za měsíc: A (+5.0 %)", summary)
+        self.assertIn("Nejslabší: B (-4.0 %)", summary)
 
     def test_requested_csg_and_crypto_symbols_are_configured(self):
         configured = {instrument.label: instrument.feed_symbol for instrument in generator.WATCHLIST}

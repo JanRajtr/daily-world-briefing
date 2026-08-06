@@ -121,7 +121,7 @@ class GeneratorTests(unittest.TestCase):
         briefing = {"overview": ["Brief"], "sections": {"economy": [{"title": "Story", "summary": "Text", "why_it_matters": "Relevant", "evidence": "Company report", "item_ids": ["company"]}]}}
         page = generator.render_report(date(2026, 8, 5), briefing, [item], [], "now", True)
         self.assertIn("interested-party source", page)
-        self.assertIn("Watchlist:</strong> NVS", page)
+        self.assertIn("Sledované nástroje:</strong> NVS", page)
         self.assertNotIn("<table", page)
         self.assertNotIn("<script", page)
 
@@ -145,8 +145,8 @@ class GeneratorTests(unittest.TestCase):
                 generator.main()
             page = (output / "index.html").read_text()
             metadata = json.loads((output / "report.json").read_text())
-        self.assertIn("No sufficiently relevant recent economy items", page)
-        self.assertIn("No sufficiently relevant items were available", page)
+        self.assertIn("V nastavených zdrojích nebyly dostatečně relevantní nedávné ekonomické zprávy", page)
+        self.assertIn("V nastavených zdrojích nebyly dostatečně relevantní zprávy", page)
         self.assertEqual(metadata["selected_items"], 0)
 
 
