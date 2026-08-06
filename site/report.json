@@ -1,15 +1,15 @@
 {
   "date": "2026-08-06",
-  "generated_at": "2026-08-06T11:35:20Z",
+  "generated_at": "2026-08-06T11:39:07Z",
   "market": {
     "date": "2026-08-06",
     "score": 22.49884255283043,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-06T11:35:17Z"
+    "generated_at": "2026-08-06T11:39:05Z"
   },
   "news": {
     "date": "2026-08-06",
-    "generated_at": "2026-08-06T11:35:20Z",
+    "generated_at": "2026-08-06T11:39:07Z",
     "ai_used": false,
     "model": null,
     "selected_items": 0,
