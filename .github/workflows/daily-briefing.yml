@@ -2,8 +2,8 @@ name: Denní přehled trhů a zdravého života
 
 on:
   schedule:
-    # 06:15 UTC = 07:15 CET / 08:15 CEST. GitHub schedules use UTC.
-    - cron: "15 6 * * *"
+    # 06:00 UTC = 07:00 CET / 08:00 CEST. GitHub schedules use UTC.
+    - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
       report_date:
