@@ -10,11 +10,13 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
@@ -180,7 +182,23 @@ def request_groq_json(prompt: str, api_key: str, model: str) -> dict:
     return value
 
 
-def generate_with_retries(label: str, prompt: str, api_key: str, model: str, attempts: int = 2) -> tuple[dict, dict]:
+def retry_delay(error: BaseException, attempt: int, maximum: float = 120.0) -> float:
+    """Honor Groq's Retry-After header, with exponential backoff as a fallback."""
+    value = error.headers.get("Retry-After") if isinstance(error, urllib.error.HTTPError) and error.headers else None
+    if value:
+        try:
+            delay = float(value)
+        except ValueError:
+            try:
+                delay = (parsedate_to_datetime(value) - datetime.now(timezone.utc)).total_seconds()
+            except (TypeError, ValueError, OverflowError):
+                delay = 0
+        if delay > 0:
+            return min(delay, maximum)
+    return min(5.0 * 2 ** (attempt - 1), maximum)
+
+
+def generate_with_retries(label: str, prompt: str, api_key: str, model: str, attempts: int = 3) -> tuple[dict, dict]:
     last_error = "unknown error"
     for attempt in range(1, attempts + 1):
         try:
@@ -189,7 +207,9 @@ def generate_with_retries(label: str, prompt: str, api_key: str, model: str, att
             last_error = f"{type(error).__name__}: {error}"
             print(f"Groq {label} attempt {attempt}/{attempts} failed: {last_error}", file=sys.stderr)
             if attempt < attempts:
-                time.sleep(2)
+                delay = retry_delay(error, attempt)
+                print(f"Groq {label} retrying in {delay:g} seconds", file=sys.stderr)
+                time.sleep(delay)
     return {}, {"status": "error", "attempts": attempts, "reason": last_error}
 
 

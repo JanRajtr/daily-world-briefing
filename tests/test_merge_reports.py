@@ -1,6 +1,8 @@
 import importlib.util
 import sys
 import unittest
+import urllib.error
+from email.message import Message
 from pathlib import Path
 from unittest.mock import patch
 
@@ -106,9 +108,16 @@ class MergeTests(unittest.TestCase):
         request.side_effect = OSError("temporary outage")
         content, status = merger.generate_with_retries("reflection", "prompt", "key", "model")
         self.assertEqual(content, {})
-        self.assertEqual(request.call_count, 2)
+        self.assertEqual(request.call_count, 3)
         self.assertEqual(status["status"], "error")
         self.assertIn("temporary outage", status["reason"])
+        self.assertEqual([call.args[0] for call in _sleep.call_args_list], [5, 10])
+
+    def test_rate_limit_retry_honors_retry_after_header(self):
+        headers = Message()
+        headers["Retry-After"] = "17"
+        error = urllib.error.HTTPError("https://api.groq.test", 429, "Too Many Requests", headers, None)
+        self.assertEqual(merger.retry_delay(error, 1), 17)
 
     @patch.object(merger, "generate_with_retries")
     def test_reflection_survives_failure_in_other_daily_content(self, generate):
