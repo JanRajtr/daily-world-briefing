@@ -172,7 +172,7 @@ def validate_daily_content(content: dict) -> dict:
 
 
 def request_groq_json(prompt: str, api_key: str, model: str) -> dict:
-    payload = json.dumps({"model": model, "temperature": 0, "response_format": {"type": "json_object"}, "compound_custom": {"tools": {"enabled_tools": ["web_search", "visit_website"]}}, "messages": [{"role": "system", "content": "Jsi přesný český rešeršér a překladatel. Bez dohledatelného webového zdroje obsah vynecháš."}, {"role": "user", "content": prompt}]}).encode()
+    payload = json.dumps({"model": model, "temperature": 0, "response_format": {"type": "json_object"}, "compound_custom": {"tools": {"enabled_tools": ["web_search"]}}, "messages": [{"role": "system", "content": "Jsi přesný český rešeršér a překladatel. Bez dohledatelného webového zdroje obsah vynecháš."}, {"role": "user", "content": prompt}]}).encode()
     request = urllib.request.Request(GROQ_URL, data=payload, method="POST", headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "daily-world-briefing/1.0"})
     with urllib.request.urlopen(request, timeout=90) as response:
         result = json.loads(response.read())
@@ -198,14 +198,38 @@ def retry_delay(error: BaseException, attempt: int, maximum: float = 120.0) -> f
     return min(5.0 * 2 ** (attempt - 1), maximum)
 
 
+def retryable_groq_error(error: BaseException) -> bool:
+    if not isinstance(error, urllib.error.HTTPError):
+        return isinstance(error, (OSError, TimeoutError))
+    return error.code in (408, 429, 498) or 500 <= error.code < 600
+
+
+def groq_error_reason(error: BaseException) -> str:
+    reason = f"{type(error).__name__}: {error}"
+    if not isinstance(error, urllib.error.HTTPError):
+        return reason
+    try:
+        body = error.read(2048).decode("utf-8", errors="replace")
+        value = json.loads(body)
+        detail = value.get("error", {}).get("message", "") if isinstance(value, dict) else ""
+        if detail:
+            safe_detail = re.sub(r"\s+", " ", str(detail)).strip()[:500]
+            return f"{reason}: {safe_detail}"
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        pass
+    return reason
+
+
 def generate_with_retries(label: str, prompt: str, api_key: str, model: str, attempts: int = 3) -> tuple[dict, dict]:
     last_error = "unknown error"
     for attempt in range(1, attempts + 1):
         try:
             return request_groq_json(prompt, api_key, model), {"status": "ok", "attempts": attempt}
         except (OSError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as error:
-            last_error = f"{type(error).__name__}: {error}"
+            last_error = groq_error_reason(error)
             print(f"Groq {label} attempt {attempt}/{attempts} failed: {last_error}", file=sys.stderr)
+            if not retryable_groq_error(error):
+                return {}, {"status": "error", "attempts": attempt, "reason": last_error}
             if attempt < attempts:
                 delay = retry_delay(error, attempt)
                 print(f"Groq {label} retrying in {delay:g} seconds", file=sys.stderr)

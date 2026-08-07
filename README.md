@@ -8,7 +8,7 @@ Citát, buddhistické učení, recepty a tip pro zdravé stárnutí se každý d
 
 Je-li při daném spuštění nalezen ověřitelný historický citát a skutečná myšlenka buddhistického učitele či badatele, vydání jimi začíná. Bez výsledku se tato část nezobrazí.
 
-Rešerše citátu a buddhistického učení běží odděleně od ostatního denního obsahu a při přechodné chybě se až dvakrát zopakuje. Při omezení rychlosti respektuje serverový `Retry-After`; jinak použije exponenciální prodlevu. Stav, počet pokusů a důvod případného vynechání se ukládají do `site/report.json`; chyby Groq jsou současně viditelné v logu GitHub Actions.
+Rešerše citátu a buddhistického učení běží odděleně od ostatního denního obsahu a používá omezený nástroj `web_search`, aby načítání celých webů nepřeplnilo kontext Compound. Přechodné chyby se až dvakrát zopakují; chyby požadavku jako HTTP 413 se neopakují. Při omezení rychlosti respektuje klient serverový `Retry-After`, jinak použije exponenciální prodlevu. Stav, počet pokusů a bezpečný důvod případného vynechání se ukládají do `site/report.json`; chyby Groq jsou současně viditelné v logu GitHub Actions.
 
 ## What it produces
 

@@ -1,7 +1,9 @@
 import importlib.util
+import json
 import sys
 import unittest
 import urllib.error
+from io import BytesIO
 from email.message import Message
 from pathlib import Path
 from unittest.mock import patch
@@ -127,6 +129,26 @@ class MergeTests(unittest.TestCase):
         headers["Retry-After"] = "17"
         error = urllib.error.HTTPError("https://api.groq.test", 429, "Too Many Requests", headers, None)
         self.assertEqual(merger.retry_delay(error, 1), 17)
+
+    @patch.object(merger.time, "sleep")
+    @patch.object(merger, "request_groq_json")
+    def test_payload_too_large_is_not_retried(self, request, sleep):
+        body = BytesIO(b'{"error":{"message":"Request too large after tool use"}}')
+        request.side_effect = urllib.error.HTTPError("https://api.groq.test", 413, "Payload Too Large", {}, body)
+        content, status = merger.generate_with_retries("reflection", "prompt", "key", "model")
+        self.assertEqual(content, {})
+        self.assertEqual(request.call_count, 1)
+        sleep.assert_not_called()
+        self.assertEqual(status["attempts"], 1)
+        self.assertIn("Request too large after tool use", status["reason"])
+
+    @patch.object(merger.urllib.request, "urlopen")
+    def test_compound_request_uses_search_without_visiting_pages(self, urlopen):
+        response = urlopen.return_value.__enter__.return_value
+        response.read.return_value = b'{"choices":[{"message":{"content":"{}"}}]}'
+        merger.request_groq_json("prompt", "key", "groq/compound")
+        payload = json.loads(urlopen.call_args.args[0].data)
+        self.assertEqual(payload["compound_custom"]["tools"]["enabled_tools"], ["web_search"])
 
     @patch.object(merger, "generate_with_retries")
     def test_reflection_survives_failure_in_other_daily_content(self, generate):
