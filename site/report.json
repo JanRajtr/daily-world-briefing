@@ -1,18 +1,18 @@
 {
   "date": "2026-08-07",
-  "generated_at": "2026-08-07T08:30:37Z",
+  "generated_at": "2026-08-07T08:44:06Z",
   "market": {
     "date": "2026-08-07",
     "score": 22.01866854190615,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-07T08:30:33Z"
+    "generated_at": "2026-08-07T08:43:55Z"
   },
   "news": {
     "date": "2026-08-07",
-    "generated_at": "2026-08-07T08:30:37Z",
+    "generated_at": "2026-08-07T08:44:06Z",
     "ai_used": true,
     "model": "llama-3.3-70b-versatile",
-    "selected_items": 1,
+    "selected_items": 6,
     "feed_failures": 0
   },
   "daily_content": {
@@ -20,7 +20,7 @@
     "reflection": {
       "status": "error",
       "attempts": 3,
-      "reason": "HTTPError: HTTP Error 413: Payload Too Large",
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests",
       "quote": "omitted",
       "buddhist_teaching": "omitted"
     },
