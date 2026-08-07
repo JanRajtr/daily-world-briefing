@@ -1,0 +1,65 @@
+{
+  "date": "2026-08-07",
+  "generated_at": "2026-08-07T10:28:56Z",
+  "market": {
+    "date": "2026-08-07",
+    "score": 22.01866854190615,
+    "label": "Rendah",
+    "generated_at": "2026-08-07T10:28:45Z",
+    "profile": "id-islamic"
+  },
+  "news": {
+    "date": "2026-08-07",
+    "generated_at": "2026-08-07T10:28:56Z",
+    "ai_used": true,
+    "model": "llama-3.3-70b-versatile",
+    "selected_items": 16,
+    "feed_failures": 0,
+    "profile": "id-islamic"
+  },
+  "daily_content": {
+    "models": {
+      "reflection": "groq/compound-mini",
+      "extras": "groq/compound"
+    },
+    "reflection": {
+      "status": "ok",
+      "attempts": 1,
+      "max_completion_tokens": 1000,
+      "limit_tokens": 70000,
+      "remaining_tokens": 68775,
+      "reset_tokens_seconds": 1.05,
+      "quote": "present",
+      "spiritual_teaching": "omitted",
+      "spiritual_teaching_reason": "Groq returned no teaching with text, author, work, and a valid source URL",
+      "model": "groq/compound-mini"
+    },
+    "extras": {
+      "status": "error",
+      "attempts": 2,
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499970, Requested 4612. Please try again in 13m11.7696s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "max_completion_tokens": 3200,
+      "rate_limit": "TPD",
+      "retry_after_seconds": 791.7696,
+      "model": "groq/compound"
+    }
+  },
+  "flight_price": {
+    "status": "reused",
+    "source_profile": "cs-buddhist"
+  },
+  "flight": {
+    "price_czk": 97783,
+    "outbound_date": "2027-06-01",
+    "return_date": "2027-07-01",
+    "airlines": [
+      "Turkish Airlines"
+    ],
+    "outbound_stops": 1,
+    "duration_minutes": 1035,
+    "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
+    "checked_at": "2026-08-07T10:27:37+00:00",
+    "sampled_date_pairs": 10
+  },
+  "profile": "id-islamic"
+}

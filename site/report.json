@@ -1,19 +1,21 @@
 {
   "date": "2026-08-07",
-  "generated_at": "2026-08-07T10:02:38Z",
+  "generated_at": "2026-08-07T10:20:08Z",
   "market": {
     "date": "2026-08-07",
     "score": 22.01866854190615,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-07T10:02:26Z"
+    "generated_at": "2026-08-07T10:19:55Z",
+    "profile": "cs-buddhist"
   },
   "news": {
     "date": "2026-08-07",
-    "generated_at": "2026-08-07T10:02:38Z",
+    "generated_at": "2026-08-07T10:20:08Z",
     "ai_used": true,
     "model": "llama-3.3-70b-versatile",
     "selected_items": 16,
-    "feed_failures": 0
+    "feed_failures": 0,
+    "profile": "cs-buddhist"
   },
   "daily_content": {
     "models": {
@@ -25,19 +27,20 @@
       "attempts": 1,
       "max_completion_tokens": 1000,
       "limit_tokens": 70000,
-      "remaining_tokens": 68825,
-      "reset_tokens_seconds": 1.007,
+      "remaining_tokens": 68816,
+      "reset_tokens_seconds": 1.014,
       "quote": "present",
+      "spiritual_teaching": "present",
       "buddhist_teaching": "present",
       "model": "groq/compound-mini"
     },
     "extras": {
       "status": "error",
-      "attempts": 1,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 497882, Requested 5218. Please try again in 8m55.679999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "attempts": 2,
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 497763, Requested 6076. Please try again in 11m3.3792s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
       "max_completion_tokens": 3200,
       "rate_limit": "TPD",
-      "retry_after_seconds": 535.679999999,
+      "retry_after_seconds": 663.3792,
       "model": "groq/compound"
     }
   },
@@ -56,5 +59,19 @@
       "2027-07-27: ValueError: Google Flights hasn't returned any results for this query.",
       "2027-08-01: ValueError: Google Flights hasn't returned any results for this query."
     ]
-  }
+  },
+  "flight": {
+    "price_czk": 97783,
+    "outbound_date": "2027-06-01",
+    "return_date": "2027-07-01",
+    "airlines": [
+      "Turkish Airlines"
+    ],
+    "outbound_stops": 1,
+    "duration_minutes": 1035,
+    "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
+    "checked_at": "2026-08-07T10:27:37+00:00",
+    "sampled_date_pairs": 10
+  },
+  "profile": "cs-buddhist"
 }
