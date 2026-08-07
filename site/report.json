@@ -1,18 +1,18 @@
 {
   "date": "2026-08-07",
-  "generated_at": "2026-08-07T09:43:58Z",
+  "generated_at": "2026-08-07T10:02:38Z",
   "market": {
     "date": "2026-08-07",
     "score": 22.01866854190615,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-07T09:43:46Z"
+    "generated_at": "2026-08-07T10:02:26Z"
   },
   "news": {
     "date": "2026-08-07",
-    "generated_at": "2026-08-07T09:43:58Z",
+    "generated_at": "2026-08-07T10:02:38Z",
     "ai_used": true,
     "model": "llama-3.3-70b-versatile",
-    "selected_items": 6,
+    "selected_items": 16,
     "feed_failures": 0
   },
   "daily_content": {
@@ -34,11 +34,27 @@
     "extras": {
       "status": "error",
       "attempts": 1,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 498525, Requested 4803. Please try again in 9m35.0784s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 497882, Requested 5218. Please try again in 8m55.679999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
       "max_completion_tokens": 3200,
       "rate_limit": "TPD",
-      "retry_after_seconds": 575.0784,
+      "retry_after_seconds": 535.679999999,
       "model": "groq/compound"
     }
+  },
+  "flight_price": {
+    "status": "ok",
+    "searched_date_pairs": 10,
+    "successful_date_pairs": 1,
+    "failures": [
+      "2027-06-08: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-06-15: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-06-22: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-06-29: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-07-06: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-07-13: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-07-20: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-07-27: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-08-01: ValueError: Google Flights hasn't returned any results for this query."
+    ]
   }
 }
