@@ -1,11 +1,11 @@
 # Daily World Briefing
 
-A deliberately bounded, source-grounded briefing covering at most six stories:
+A deliberately bounded, source-grounded briefing covering at most five stories in each section:
 
-- two consequential developments from Czechia or the European Union;
-- two consequential global developments;
-- one global-economy story with explicit connections to the market-risk watchlist;
-- one science, health or technology development supported by substantive evidence.
+- Czechia and the European Union;
+- consequential global developments;
+- the global economy with explicit connections to the market-risk watchlist;
+- science, health and technology supported by substantive evidence.
 
 The project collects public RSS/Atom feeds, ranks and deduplicates recent material, asks Groq's free API (`llama-3.3-70b-versatile`) for a cited synthesis, generates a lightweight static HTML article, deploys it to GitHub Pages and optionally sends it to two Instapaper accounts. If a publisher advertises no working direct feed, a narrowly scoped Google News RSS query is used only to discover pages on that publisher's own domain. If AI is unavailable, the project publishes an extractive source digest instead.
 
@@ -21,7 +21,7 @@ The project collects public RSS/Atom feeds, ranks and deduplicates recent materi
 - Laboratory, animal, preclinical, Phase 1 and Phase 2 developments are excluded from the medical briefing.
 - The report links to every underlying source and contains no medical or investment recommendation.
 
-Independent reporting comes from the dedicated iROZHLAS domestic, world and science feeds and BBC World. Configured primary and specialist sources include the ECB, European Commission, Council of the EU, EMA, NATO, SIPRI, Bruegel, the European Society of Cardiology, Novartis and ASML. US and global sources add NCI, NEI, Harvard, IMF and BIS coverage; European medicines regulation is sourced from EMA rather than FDA. Edit `SOURCES` in `scripts/generate_report.py` to add or remove feeds.
+Independent reporting comes from the dedicated iROZHLAS domestic, world and science feeds, BBC World and Al Jazeera English. Configured primary and specialist sources include the ECB, European Commission, Council of the EU, EMA, NATO, SIPRI, Bruegel, the European Society of Cardiology, Novartis and ASML. US and global sources add NCI, NEI, Harvard, IMF and BIS coverage; European medicines regulation is sourced from EMA rather than FDA. Edit `SOURCES` in `scripts/generate_report.py` to add or remove feeds.
 
 ## Local verification
 

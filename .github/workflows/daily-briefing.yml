@@ -78,6 +78,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_WEB_MODEL: groq/compound
           GROQ_REFLECTION_MODEL: groq/compound-mini
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
         run: python scripts/merge_reports.py --market work/market --news work/news --output site
 
       - name: Commit daily report

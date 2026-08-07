@@ -25,7 +25,7 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 PUBMED_SEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 PUBMED_FETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 SECTIONS = ("czech_eu", "world", "economy", "science")
-SECTION_LIMITS = {"czech_eu": 2, "world": 2, "economy": 1, "science": 1}
+SECTION_LIMITS = {section: 5 for section in SECTIONS}
 DISABLED_SECTIONS: set[str] = set()
 
 
@@ -46,6 +46,7 @@ SOURCES = (
     Source("iROZHLAS — domov", "https://www.irozhlas.cz/rss/irozhlas/section/zpravy-domov", "czech_eu", "independent-news", "Czechia", tags=("Czechia",)),
     Source("iROZHLAS — svět", "https://www.irozhlas.cz/rss/irozhlas/section/zpravy-svet", "world", "independent-news", "Global"),
     Source("BBC News — world", "https://feeds.bbci.co.uk/news/world/rss.xml", "world", "independent-news", "Global"),
+    Source("Al Jazeera English", "https://www.aljazeera.com/xml/rss/all.xml", "world", "independent-news", "Global"),
     Source("iROZHLAS — věda a technologie", "https://www.irozhlas.cz/rss/irozhlas/section/veda-technologie", "science", "independent-news", "Czechia", tags=("science", "technology")),
     Source("European Central Bank", "https://www.ecb.europa.eu/rss/press.html", "economy", "official", "Europe", tags=("ECB", "rates", "euro")),
     Source("IMF", "https://news.google.com/rss/search?q=site%3Aimf.org%2Fen%2FNews+when%3A4d&hl=en&gl=US&ceid=US%3Aen", "economy", "official", "Global", tags=("macro", "trade")),
@@ -396,13 +397,13 @@ def ai_prompt(items: list[Item], report_date: date) -> str:
     records = []
     for item in items:
         record = {key: value for key, value in asdict(item).items() if key not in ("score",)}
-        record["summary"] = record["summary"][:900]
+        record["summary"] = record["summary"][:400]
         records.append(record)
     return f"""Vytvoř stručný denní přehled v přirozené češtině pro {report_date.isoformat()} POUZE z dodaných záznamů. Překládej a zkracuj věrně; nevymýšlej souvislosti, fakta, nejistoty ani prognózy.
 Return valid JSON, with no markdown, in this exact shape:
 {{"overview":["..."],"sections":{{"czech_eu":[STORY],"world":[STORY],"economy":[STORY],"science":[STORY]}}}}
 Each STORY is {{"title":"...","summary":"nejvýše 2 faktické věty v češtině","why_it_matters":"nejvýše 1 věta doložená záznamem","unknown":"co zdroj výslovně ponechává nejisté, jinak prázdný text","certainty":"potvrzené|předběžné|tvrzení jedné strany","item_ids":["id"],"evidence":"stručný typ zdroje v češtině"}}.
-Dodrž limity czech_eu nejvýše 2, world nejvýše 2, economy nejvýše 1 a science nejvýše 1. Overview smí pouze stručně shrnout vybrané STORY; při prázdném výběru vrať prázdné pole. Slučuj pouze záznamy o stejné události a cituj všechna jejich ID. Nikdy nepřidávej fakt nepřítomný v záznamech. Firemní, vládní a vojenská tvrzení vždy připiš původci a označ jako tvrzení jedné strany, pokud je nepotvrzuje nezávislý záznam. `why_it_matters` musí uvést konkrétní doložený dopad; nikdy nepiš obecné věty typu "je to důležité pro pacienty, lékaře nebo veřejnost". Není-li konkrétní dopad ve zdroji, vrať prázdný text. Nevytvářej cenové prognózy. Je-li podklad slabý, zprávu vynech. Veškerý redakční text musí být česky; vlastní názvy a názvy zdrojů mohou zůstat v originále.
+V každé sekci czech_eu, world, economy a science použij nejvýše 5 STORY. Overview smí pouze stručně shrnout vybrané STORY; při prázdném výběru vrať prázdné pole. Slučuj pouze záznamy o stejné události a cituj všechna jejich ID. Nikdy nepřidávej fakt nepřítomný v záznamech. Firemní, vládní a vojenská tvrzení vždy připiš původci a označ jako tvrzení jedné strany, pokud je nepotvrzuje nezávislý záznam. `why_it_matters` musí uvést konkrétní doložený dopad; nikdy nepiš obecné věty typu "je to důležité pro pacienty, lékaře nebo veřejnost". Není-li konkrétní dopad ve zdroji, vrať prázdný text. Nevytvářej cenové prognózy. Je-li podklad slabý, zprávu vynech. Veškerý redakční text musí být česky; vlastní názvy a názvy zdrojů mohou zůstat v originále.
 RECORDS:
 {json.dumps(records, ensure_ascii=False)}"""
 
@@ -518,12 +519,12 @@ def render_report(report_date: date, briefing: dict, items: list[Item], failures
 <html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Podstatné denní zprávy — {report_date.isoformat()}</title><meta name="description" content="Omezený, zdrojově podložený přehled podstatných zpráv.">
 </head><body><article>
-<p><strong>Podstatné denní zprávy — {report_date.isoformat()}.</strong> Nejvýše šest doložených událostí bez nekonečného proudu aktualizací.</p>
+<p><strong>Podstatné denní zprávy — {report_date.isoformat()}.</strong> Nejvýše pět doložených událostí v každé rubrice bez nekonečného proudu aktualizací.</p>
 {f'<h2>Dnes stručně</h2><ul>{overview}</ul>' if overview else ''}
 {''.join(sections_html)}
 {warning}
 <h2>Redakční metoda</h2>
-<p>Výběr je omezen na dvě zprávy z Česka/EU, dvě ze světa, jednu ekonomickou a jednu vědeckou. Firemní, vládní a vojenská tvrzení jsou připsána původci a nepovažují se sama o sobě za nezávislé potvrzení. Bez konkrétního zdrojového záznamu se zpráva nevytvoří. Přehled má informační charakter a není investičním ani lékařským doporučením.</p>
+<p>Výběr je omezen na pět zpráv v každé rubrice. Firemní, vládní a vojenská tvrzení jsou připsána původci a nepovažují se sama o sobě za nezávislé potvrzení. Bez konkrétního zdrojového záznamu se zpráva nevytvoří. Přehled má informační charakter a není investičním ani lékařským doporučením.</p>
 <p>Vygenerováno {generated_at} UTC; režim: {mode}. Systém zpracoval {len(items)} vybraných záznamů z veřejných kanálů. Odkazy vedou na původní zdroje.</p>
 </article></body></html>'''
 

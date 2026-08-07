@@ -60,6 +60,12 @@ class GeneratorTests(unittest.TestCase):
         self.assertFalse(any("FDA" in source.name for source in generator.SOURCES))
         self.assertTrue(any("European Medicines Agency" in source.name for source in generator.SOURCES))
 
+    def test_al_jazeera_is_a_bounded_world_source(self):
+        source = next(source for source in generator.SOURCES if source.name == "Al Jazeera English")
+        self.assertEqual(source.url, "https://www.aljazeera.com/xml/rss/all.xml")
+        self.assertEqual(source.default_section, "world")
+        self.assertEqual(generator.SECTION_LIMITS["world"], 5)
+
     def test_rejects_undated_feed_item_instead_of_treating_it_as_today(self):
         source = generator.Source("News", "https://example.test/rss", "world", "independent-news", "Global")
         payload = b'''<rss><channel><item><title>Undated evergreen page</title>
@@ -130,8 +136,8 @@ class GeneratorTests(unittest.TestCase):
             "science", "peer-reviewed", "Europe", summary="x" * 5000,
         )
         prompt = generator.ai_prompt([item], date(2026, 8, 5))
-        self.assertNotIn("x" * 901, prompt)
-        self.assertIn("x" * 900, prompt)
+        self.assertNotIn("x" * 401, prompt)
+        self.assertIn("x" * 400, prompt)
 
     def test_default_editorial_selection_is_bounded(self):
         items = []
@@ -139,11 +145,9 @@ class GeneratorTests(unittest.TestCase):
             for index in range(count):
                 items.append(generator.Item(str(index) + section, f"Title {index}", "https://example.test", "2026-08-04", "Source", section, "official", "Europe", score=index))
         selected = generator.select_items(items)
-        self.assertEqual(sum(item.section == "czech_eu" for item in selected), 2)
-        self.assertEqual(sum(item.section == "world" for item in selected), 2)
-        self.assertEqual(sum(item.section == "economy" for item in selected), 1)
-        self.assertEqual(sum(item.section == "science" for item in selected), 1)
-        self.assertEqual(len(selected), 6)
+        for section in generator.SECTIONS:
+            self.assertEqual(sum(item.section == section for item in selected), 5)
+        self.assertEqual(len(selected), 20)
 
     def test_company_source_is_visibly_labelled(self):
         item = generator.Item("company", "Company result", "https://example.test", "2026-08-04", "Novartis", "economy", "company", "Europe", watchlist=["NVS"])
@@ -162,7 +166,7 @@ class GeneratorTests(unittest.TestCase):
             metadata = json.loads((Path(directory) / "report.json").read_text())
         self.assertIn("Světová ekonomika a portfolio", page)
         self.assertFalse(metadata["ai_used"])
-        self.assertEqual(metadata["selected_items"], 1)
+        self.assertEqual(metadata["selected_items"], 3)
 
     def test_empty_fixture_publishes_transparent_empty_digest(self):
         with tempfile.TemporaryDirectory() as directory:

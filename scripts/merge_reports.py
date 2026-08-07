@@ -24,11 +24,103 @@ AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 CALENDAR_URL = "https://svatkyapi.netlify.app/api/day"
 CNB_URL = "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.xml"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+SERPAPI_URL = "https://serpapi.com/search.json"
 GROQ_TPM_COOLDOWN = 65.0
 GROQ_REQUEST_SPACING = 65.0
 GROQ_TPD_RETRY_WINDOW = 300.0
 WEATHER_LOCATIONS = {"Horoměřice": (50.1317, 14.3388), "Prague": (50.0755, 14.4378), "Česká Lípa": (50.6855, 14.5376)}
 WEATHER_CODES = {0: "Jasno", 1: "Převážně jasno", 2: "Polojasno", 3: "Zataženo", 45: "Mlha", 48: "Mrznoucí mlha", 51: "Slabé mrholení", 53: "Mrholení", 55: "Silné mrholení", 61: "Slabý déšť", 63: "Déšť", 65: "Silný déšť", 71: "Slabé sněžení", 73: "Sněžení", 75: "Silné sněžení", 80: "Slabé přeháňky", 81: "Přeháňky", 82: "Silné přeháňky", 85: "Slabé sněhové přeháňky", 86: "Silné sněhové přeháňky", 95: "Bouřky", 96: "Bouřky s kroupami", 99: "Silné bouřky s kroupami"}
+
+
+def summer_2027_flight_dates() -> list[tuple[str, str]]:
+    """Cover the bookable summer window without an unaffordable daily API sweep."""
+    first = date(2027, 6, 1)
+    last_departure = date(2027, 8, 1)
+    departures = []
+    current = first
+    while current <= last_departure:
+        departures.append(current)
+        current += timedelta(days=7)
+    if departures[-1] != last_departure:
+        departures.append(last_departure)
+    return [(outbound.isoformat(), (outbound + timedelta(days=30)).isoformat()) for outbound in departures]
+
+
+def fetch_flight_candidate(api_key: str, outbound_date: str, return_date: str) -> dict | None:
+    query = urllib.parse.urlencode({
+        "engine": "google_flights", "api_key": api_key,
+        "departure_id": "PRG", "arrival_id": "CGK", "type": 1,
+        "outbound_date": outbound_date, "return_date": return_date,
+        "travel_class": 3, "adults": 1, "stops": 2, "sort_by": 2,
+        "currency": "CZK", "hl": "cs", "gl": "cz",
+    })
+    request = urllib.request.Request(f"{SERPAPI_URL}?{query}", headers={"User-Agent": "daily-world-briefing/1.0"})
+    with urllib.request.urlopen(request, timeout=45) as response:
+        payload = json.loads(response.read())
+    if payload.get("error"):
+        raise ValueError(str(payload["error"]))
+    candidates = payload.get("best_flights", []) + payload.get("other_flights", [])
+    valid = []
+    for candidate in candidates:
+        flights = candidate.get("flights", []) if isinstance(candidate, dict) else []
+        price = candidate.get("price") if isinstance(candidate, dict) else None
+        if not flights or len(flights) > 2 or not isinstance(price, (int, float)) or price <= 0:
+            continue
+        airlines = sorted({str(flight.get("airline", "")).strip() for flight in flights if flight.get("airline")})
+        valid.append({
+            "price_czk": round(price), "outbound_date": outbound_date, "return_date": return_date,
+            "airlines": airlines, "outbound_stops": len(flights) - 1,
+            "duration_minutes": candidate.get("total_duration"),
+            "url": payload.get("search_metadata", {}).get("google_flights_url", ""),
+        })
+    return min(valid, key=lambda item: item["price_czk"]) if valid else None
+
+
+def fetch_summer_flight_price(api_key: str) -> tuple[dict | None, dict]:
+    dates = summer_2027_flight_dates()
+    candidates = []
+    failures = []
+    for outbound, returning in dates:
+        try:
+            candidate = fetch_flight_candidate(api_key, outbound, returning)
+            if candidate:
+                candidates.append(candidate)
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+            failures.append(f"{outbound}: {type(error).__name__}: {error}")
+    status = {"status": "ok" if candidates else "error", "searched_date_pairs": len(dates), "successful_date_pairs": len(candidates)}
+    if failures:
+        status["failures"] = failures
+    if not candidates:
+        status["reason"] = "No verified Google Flights result was returned"
+        return None, status
+    cheapest = min(candidates, key=lambda item: item["price_czk"])
+    cheapest["checked_at"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    cheapest["sampled_date_pairs"] = len(dates)
+    return cheapest, status
+
+
+def flight_price_section(flight: dict | None) -> str:
+    if not flight:
+        return ""
+    price = f'{int(flight["price_czk"]):,}'.replace(",", " ")
+    airlines = ", ".join(flight.get("airlines", [])) or "aerolinka uvedená ve výsledku"
+    stops = "bez přestupu" if flight.get("outbound_stops") == 0 else "1 přestup"
+    duration = ""
+    if isinstance(flight.get("duration_minutes"), (int, float)):
+        hours, minutes = divmod(round(flight["duration_minutes"]), 60)
+        duration = f"; cesta tam {hours} h {minutes} min"
+    link = html.escape(str(flight.get("url", "")), quote=True)
+    source = f'<a href="{link}">Google Flights</a>' if link.startswith("http") else "Google Flights"
+    return (
+        '<h2>Dnešní cena zpáteční letenky Praha–Jakarta</h2>'
+        f'<p><strong>{price} Kč</strong> za jednu osobu v business class. '
+        f'Odlet {html.escape(flight["outbound_date"])}, návrat {html.escape(flight["return_date"])}; '
+        f'{html.escape(airlines)}, {stops}{duration}.</p>'
+        f'<p><small>Nejnižší aktuálně nalezená cena mezi {flight["sampled_date_pairs"]} týdenními termíny odletu '
+        f'v létě 2027, vždy s návratem po 30 dnech a nejvýše jedním přestupem. Zdroj: {source}; '
+        f'ověřeno {html.escape(flight["checked_at"])}. Cena a dostupnost se mohou změnit před rezervací.</small></p>'
+    )
+
 
 def sourced_item(value: object) -> dict | None:
     if not isinstance(value, dict):
@@ -364,7 +456,7 @@ def wellbeing_sections(report_date: str, weather: list[dict], content: dict, cal
     return "\n".join(sections)
 
 
-def merge_pages(market_page: str, news_page: str, report_date: str, weather: list[dict] | None = None, daily_content: dict | None = None, include_news: bool = True, calendar: dict | None = None, fx: dict | None = None, air_quality: list[dict] | None = None) -> str:
+def merge_pages(market_page: str, news_page: str, report_date: str, weather: list[dict] | None = None, daily_content: dict | None = None, include_news: bool = True, calendar: dict | None = None, fx: dict | None = None, air_quality: list[dict] | None = None, flight: dict | None = None) -> str:
     market = article_body(market_page)
     news = ""
     if include_news:
@@ -380,6 +472,7 @@ def merge_pages(market_page: str, news_page: str, report_date: str, weather: lis
     content = validate_daily_content(daily_content or {})
     reflection = daily_reflection(content)
     wellbeing = wellbeing_sections(report_date, weather if weather is not None else fetch_weather(report_date), content, calendar, fx, air_quality)
+    flight_section = flight_price_section(flight)
     return f'''<!doctype html>
 <html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Denní přehled trhů a zdravého života — {safe_date}</title>
@@ -392,6 +485,7 @@ h2, h3 {{ break-after: avoid; page-break-after: avoid; }}
 </head><body><article>
 {reflection}
 {wellbeing}
+{flight_section}
 {news}
 {market}
 <p><strong>Přeji hezký, klidný, šťastný a bezpečný den!</strong></p>
@@ -444,10 +538,17 @@ def main() -> None:
             daily_content = {}
             generation = {"status": "error", "reason": "GROQ_API_KEY is not configured"}
             print("Daily web content omitted: GROQ_API_KEY is not configured", file=sys.stderr)
+    flight = None
+    flight_generation = {"status": "error", "reason": "SERPAPI_API_KEY is not configured"}
+    serpapi_key = os.environ.get("SERPAPI_API_KEY", "")
+    if serpapi_key:
+        flight, flight_generation = fetch_summer_flight_price(serpapi_key)
+    else:
+        print("Flight price omitted: SERPAPI_API_KEY is not configured", file=sys.stderr)
     page = merge_pages(
         (market_dir / "index.html").read_text(encoding="utf-8"),
         (news_dir / "index.html").read_text(encoding="utf-8"),
-        market_meta["date"], weather, daily_content, news_meta.get("selected_items", 0) > 0, calendar, fx, air_quality,
+        market_meta["date"], weather, daily_content, news_meta.get("selected_items", 0) > 0, calendar, fx, air_quality, flight,
     )
     (output / "index.html").write_text(page, encoding="utf-8")
     combined = {
@@ -456,6 +557,7 @@ def main() -> None:
         "market": market_meta,
         "news": news_meta,
         "daily_content": generation,
+        "flight_price": flight_generation,
     }
     (output / "report.json").write_text(json.dumps(combined, indent=2) + "\n", encoding="utf-8")
     print(f"Merged market and news components into {output / 'index.html'}")

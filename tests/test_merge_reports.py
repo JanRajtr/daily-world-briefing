@@ -3,6 +3,8 @@ import json
 import sys
 import unittest
 import urllib.error
+import urllib.parse
+from datetime import date, timedelta
 from io import BytesIO
 from email.message import Message
 from pathlib import Path
@@ -52,6 +54,38 @@ class MergeTests(unittest.TestCase):
         self.assertLess(page.index("Zdravý a chutný jídelníček"), page.index("Tip pro zdravé stárnutí"))
         self.assertLess(page.index("Tip pro zdravé stárnutí"), page.index("Market component"))
         self.assertTrue(page.index("Přeji hezký") > page.index("Tip pro zdravé stárnutí"))
+
+    def test_summer_flight_dates_stay_in_summer_and_last_one_month(self):
+        pairs = merger.summer_2027_flight_dates()
+        self.assertEqual(len(pairs), 10)
+        self.assertEqual(pairs[0], ("2027-06-01", "2027-07-01"))
+        self.assertEqual(pairs[-1], ("2027-08-01", "2027-08-31"))
+        for outbound, returning in pairs:
+            self.assertEqual(date.fromisoformat(returning) - date.fromisoformat(outbound), timedelta(days=30))
+
+    @patch.object(merger.urllib.request, "urlopen")
+    def test_flight_search_uses_business_one_stop_and_real_result(self, urlopen):
+        response = urlopen.return_value.__enter__.return_value
+        response.read.return_value = json.dumps({
+            "search_metadata": {"google_flights_url": "https://google.test/flights"},
+            "best_flights": [{"price": 54321, "total_duration": 1080, "flights": [
+                {"airline": "Qatar Airways"}, {"airline": "Qatar Airways"},
+            ]}],
+        }).encode()
+        result = merger.fetch_flight_candidate("secret", "2027-06-01", "2027-07-01")
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(urlopen.call_args.args[0].full_url).query)
+        self.assertEqual(query["travel_class"], ["3"])
+        self.assertEqual(query["stops"], ["2"])
+        self.assertEqual(query["sort_by"], ["2"])
+        self.assertEqual(result["price_czk"], 54321)
+        self.assertEqual(result["outbound_stops"], 1)
+
+    def test_flight_section_is_before_news_and_never_invented(self):
+        flight = {"price_czk": 54321, "outbound_date": "2027-06-01", "return_date": "2027-07-01", "airlines": ["Qatar Airways"], "outbound_stops": 1, "duration_minutes": 1080, "url": "https://google.test/flights", "checked_at": "2026-08-07T08:00:00+00:00", "sampled_date_pairs": 10}
+        page = merger.merge_pages("<article>Market</article>", "<article><h2>Ekonomické zprávy</h2>News</article>", "2026-08-07", [], {}, flight=flight)
+        self.assertIn("54 321 Kč", page)
+        self.assertLess(page.index("Dnešní cena zpáteční letenky"), page.index("Ekonomické zprávy"))
+        self.assertEqual(merger.flight_price_section(None), "")
 
     def test_major_sections_start_on_new_ereader_page(self):
         page = merger.merge_pages(

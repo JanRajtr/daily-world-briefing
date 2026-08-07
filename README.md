@@ -4,6 +4,8 @@ Plně automatizovaný český přehled. GitHub Actions počítá transparentní 
 
 Praktická ranní část může dále obsahovat český svátek a státní svátek, kurzovní lístek ČNB, kvalitu ovzduší a významný pyl, UV či jiné mimořádné počasí, události relevantní pro portfolio, zdrojové vysvětlení neobvyklých tržních pohybů a českou kulturní nebo historickou stopu dne. Každá síťová část se při nedostupnosti jednoduše vynechá.
 
+Před zprávami může být dnešní nejnižší nalezená cena business-class zpáteční letenky Praha–Jakarta pro léto 2027. SerpApi porovná v Google Flights deset týdenních termínů odletu od 1. června do 1. srpna, vždy s návratem přesně po 30 dnech (takže oba lety spadají do června až srpna) a s nejvýše jedním přestupem. Report ukáže pouze skutečný výsledek API v CZK, aerolinku, termíny a odkaz; při chybě nebo chybějícím klíči sekci vynechá. Jde o nejnižší cenu mezi transparentně uvedenými vzorkovanými termíny, nikoli garanci pro každý jednotlivý den léta.
+
 Citát, buddhistické učení, recepty a tip pro zdravé stárnutí se každý den vyhledávají na webu pomocí Groq Compound. Každá zobrazená položka musí mít autora či vydavatele, kontext a přímý odkaz na zdroj. Nedohledaná nebo neplatná část se přeskočí; repozitář neobsahuje žádnou obsahovou rotaci ani náhradní hodnoty.
 
 Je-li při daném spuštění nalezen ověřitelný historický citát a skutečná myšlenka buddhistického učitele či badatele, vydání jimi začíná. Bez výsledku se tato část nezobrazí.
@@ -27,6 +29,7 @@ The HTML uses a single semantic `<article>`, real headings and lists, no JavaScr
 3. Open **Settings → Pages**. Under **Build and deployment → Source**, choose **GitHub Actions**.
 4. Open **Settings → Secrets and variables → Actions → New repository secret** and add:
    - `GROQ_API_KEY` — klíč Groq používaný pro zdrojově podložené české shrnutí ekonomických zpráv a webovou rešerši s překladem citátů, učení, receptů a zdravotního tipu.
+   - `SERPAPI_API_KEY` — klíč SerpApi pro aktuální porovnání business-class letenek v Google Flights. Bez něj se letenková sekce bezpečně vynechá.
    - `INSTAPAPER_USERNAME` — the Instapaper email address or username.
    - `INSTAPAPER_PASSWORD` — the account password. If the account has no password, save an empty value if GitHub permits it; otherwise use any placeholder value, which the Simple API documentation says is accepted for passwordless accounts.
    - Optional second account: `INSTAPAPER_USERNAME_SECONDARY` and `INSTAPAPER_PASSWORD_SECONDARY`. When the secondary username is absent, delivery to the primary account continues normally.
@@ -96,5 +99,6 @@ For a live-data test, omit `--fixture`. The machine must be able to reach `fred.
 - FRED series pages and downloads: <https://fred.stlouisfed.org/>
 - GitHub Pages custom workflows: <https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages>
 - Instapaper Simple API: <https://www.instapaper.com/api/simple>
+- SerpApi Google Flights API: <https://serpapi.com/google-flights-api>
 
 No secrets are embedded in the generated site, repository or Pages artifact.
