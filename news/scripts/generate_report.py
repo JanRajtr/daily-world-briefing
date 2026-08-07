@@ -57,7 +57,6 @@ SOURCES = (
     Source("Bruegel", "https://news.google.com/rss/search?q=site%3Abruegel.org+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "economy", "independent-analysis", "Europe", tags=("EU", "macro", "trade")),
     Source("European Medicines Agency — news", "https://www.ema.europa.eu/en/news.xml", "medicine", "regulator", "Europe", tags=("approval", "safety", "medicine")),
     Source("European Medicines Agency — new medicines", "https://www.ema.europa.eu/en/new-human-medicine-new.xml", "medicine", "regulator", "Europe", tags=("approval", "medicine")),
-    Source("US FDA — drugs", "https://www.fda.gov/AboutFDA/ContactFDA/StayInformed/RSSFeeds/Drugs/rss.xml", "medicine", "regulator", "United States", tags=("approval", "safety", "medicine")),
     Source("National Cancer Institute — releases", "https://www.cancer.gov/publishedcontent/rss/syndication/rss/ncinewsreleases.rss", "medicine", "public-research", "United States", tags=("cancer", "research")),
     Source("National Cancer Institute — Cancer Currents", "https://www.cancer.gov/publishedcontent/rss/news-events/cancer-currents-blog.rss", "medicine", "public-research", "United States", tags=("cancer", "care", "research")),
     Source("National Institutes of Health", "https://news.google.com/rss/search?q=site%3Anih.gov%2Fnews-events%2Fnews-releases+when%3A7d&hl=en&gl=US&ceid=US%3Aen", "medicine", "public-research", "United States", tags=("health", "research", "longevity")),
@@ -123,7 +122,8 @@ CLINICALLY_NEAR_TERMS = (
 LOW_VALUE_PAGE_TERMS = (
     "arms transfers database", "media library", "daily news ", "site map", "sitemap",
     "press contacts", "transactions under its current share buyback", "registered outsourcing",
-    "staff concludes staff visit", "fund to start making investments", " - uat",
+    "staff concludes staff visit", "fund to start making investments", "approval notifications",
+    "does not issue approval announcements", " - uat",
 )
 GEOPOLITICAL_TERMS = (
     "war", "ceasefire", "sanction", "tariff", "export control", "NATO", "Ukraine", "Russia",
@@ -223,7 +223,7 @@ def parse_feed(source: Source, payload: bytes, report_date: date, lookback_days:
         raw_date = node_text(node, ("pubdate", "published", "updated", "date"))
         published = parse_datetime(raw_date)
         summary = clean_text(node_text(node, ("description", "summary", "content", "encoded")))[:1800]
-        if not title or not url or (published and not earliest <= published < latest):
+        if not title or not url or published is None or not earliest <= published < latest:
             continue
         section = classify(source, title, summary)
         relevance_text = f"{title} {summary}".lower()
@@ -257,7 +257,7 @@ def parse_feed(source: Source, payload: bytes, report_date: date, lookback_days:
         matches = watchlist_matches(combined)
         identifier = hashlib.sha256(f"{source.name}|{url}".encode()).hexdigest()[:12]
         item = Item(
-            identifier, title, url, (published or latest - timedelta(seconds=1)).date().isoformat(),
+            identifier, title, url, published.date().isoformat(),
             source.name, section, source.source_type, source.region, summary,
             list(source.tags), matches,
         )
@@ -402,7 +402,7 @@ def ai_prompt(items: list[Item], report_date: date) -> str:
 Return valid JSON, with no markdown, in this exact shape:
 {{"overview":["..."],"sections":{{"czech_eu":[STORY],"world":[STORY],"economy":[STORY],"science":[STORY]}}}}
 Each STORY is {{"title":"...","summary":"nejvýše 2 faktické věty v češtině","why_it_matters":"nejvýše 1 věta doložená záznamem","unknown":"co zdroj výslovně ponechává nejisté, jinak prázdný text","certainty":"potvrzené|předběžné|tvrzení jedné strany","item_ids":["id"],"evidence":"stručný typ zdroje v češtině"}}.
-Dodrž limity czech_eu nejvýše 2, world nejvýše 2, economy nejvýše 1 a science nejvýše 1. Overview smí pouze stručně shrnout vybrané STORY; při prázdném výběru vrať prázdné pole. Slučuj pouze záznamy o stejné události a cituj všechna jejich ID. Nikdy nepřidávej fakt nepřítomný v záznamech. Firemní, vládní a vojenská tvrzení vždy připiš původci a označ jako tvrzení jedné strany, pokud je nepotvrzuje nezávislý záznam. Nevytvářej cenové prognózy. Je-li podklad slabý, zprávu vynech. Veškerý redakční text musí být česky; vlastní názvy a názvy zdrojů mohou zůstat v originále.
+Dodrž limity czech_eu nejvýše 2, world nejvýše 2, economy nejvýše 1 a science nejvýše 1. Overview smí pouze stručně shrnout vybrané STORY; při prázdném výběru vrať prázdné pole. Slučuj pouze záznamy o stejné události a cituj všechna jejich ID. Nikdy nepřidávej fakt nepřítomný v záznamech. Firemní, vládní a vojenská tvrzení vždy připiš původci a označ jako tvrzení jedné strany, pokud je nepotvrzuje nezávislý záznam. `why_it_matters` musí uvést konkrétní doložený dopad; nikdy nepiš obecné věty typu "je to důležité pro pacienty, lékaře nebo veřejnost". Není-li konkrétní dopad ve zdroji, vrať prázdný text. Nevytvářej cenové prognózy. Je-li podklad slabý, zprávu vynech. Veškerý redakční text musí být česky; vlastní názvy a názvy zdrojů mohou zůstat v originále.
 RECORDS:
 {json.dumps(records, ensure_ascii=False)}"""
 
@@ -439,10 +439,13 @@ def validate_briefing(briefing: dict, items: list[Item]) -> dict:
         for story in stories:
             ids = story.get("item_ids", []) if isinstance(story, dict) else []
             if story.get("title") and story.get("summary") and ids and all(identifier in valid_ids for identifier in ids) and all(next(item for item in items if item.id == identifier).section == section for identifier in ids):
+                why_it_matters = clean_text(str(story.get("why_it_matters", "")))
+                if why_it_matters.lower().startswith(("tato informace je důležitá", "tato zpráva je důležitá", "je to důležité pro")):
+                    why_it_matters = ""
                 clean.append({
                     "title": clean_text(str(story["title"])),
                     "summary": clean_text(str(story["summary"])),
-                    "why_it_matters": clean_text(str(story.get("why_it_matters", ""))),
+                    "why_it_matters": why_it_matters,
                     "unknown": clean_text(str(story.get("unknown", ""))),
                     "certainty": clean_text(str(story.get("certainty", ""))),
                     "evidence": clean_text(str(story.get("evidence", ""))),

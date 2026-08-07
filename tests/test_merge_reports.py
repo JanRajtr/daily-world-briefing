@@ -41,6 +41,7 @@ class MergeTests(unittest.TestCase):
         self.assertIn("<h2>Ekonomické zprávy</h2>", page)
         self.assertIn("Today in brief", page)
         self.assertNotIn("Daily World Briefing — 2026-08-05.</strong> Intro", page)
+        self.assertLess(page.index("Ekonomické zprávy"), page.index("Market component"))
         self.assertIn("Dnešní počasí", page)
         self.assertIn("pravděpodobnost 10 %, očekávaný úhrn 0.4 mm", page)
         self.assertIn("Horoměřice", page)
@@ -158,6 +159,18 @@ class MergeTests(unittest.TestCase):
         sleep.assert_not_called()
         self.assertEqual(status["rate_limit"], "TPD")
         self.assertAlmostEqual(status["retry_after_seconds"], 1233.4464)
+
+    @patch.object(merger.time, "sleep")
+    @patch.object(merger, "request_groq_json")
+    def test_daily_token_limit_gets_one_bounded_retry_near_reset(self, request, sleep):
+        body = BytesIO(b'{"error":{"message":"Rate limit reached on tokens per day (TPD). Please try again in 1m47.136s."}}')
+        error = urllib.error.HTTPError("https://api.groq.test", 429, "Too Many Requests", {}, body)
+        request.side_effect = [error, ({"meals": []}, {"remaining_tokens": 1000})]
+        content, status = merger.generate_with_retries("extras", "prompt", "key", "model", 3200)
+        self.assertEqual(content, {"meals": []})
+        self.assertEqual(request.call_count, 2)
+        sleep.assert_called_once_with(merger.GROQ_TPD_RETRY_WINDOW)
+        self.assertEqual(status["attempts"], 2)
 
     @patch.object(merger.time, "sleep")
     @patch.object(merger, "request_groq_json")

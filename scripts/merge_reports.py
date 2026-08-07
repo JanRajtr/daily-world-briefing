@@ -26,6 +26,7 @@ CNB_URL = "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trh
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_TPM_COOLDOWN = 65.0
 GROQ_REQUEST_SPACING = 65.0
+GROQ_TPD_RETRY_WINDOW = 300.0
 WEATHER_LOCATIONS = {"Horoměřice": (50.1317, 14.3388), "Prague": (50.0755, 14.4378), "Česká Lípa": (50.6855, 14.5376)}
 WEATHER_CODES = {0: "Jasno", 1: "Převážně jasno", 2: "Polojasno", 3: "Zataženo", 45: "Mlha", 48: "Mrznoucí mlha", 51: "Slabé mrholení", 53: "Mrholení", 55: "Silné mrholení", 61: "Slabý déšť", 63: "Déšť", 65: "Silný déšť", 71: "Slabé sněžení", 73: "Sněžení", 75: "Silné sněžení", 80: "Slabé přeháňky", 81: "Přeháňky", 82: "Silné přeháňky", 85: "Slabé sněhové přeháňky", 86: "Silné sněhové přeháňky", 95: "Bouřky", 96: "Bouřky s kroupami", 99: "Silné bouřky s kroupami"}
 
@@ -271,6 +272,14 @@ def generate_with_retries(label: str, prompt: str, api_key: str, model: str, max
         except (OSError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as error:
             last_error = groq_error_reason(error)
             print(f"Groq {label} attempt {attempt}/{attempts} failed: {last_error}", file=sys.stderr)
+            if (
+                getattr(error, "groq_limit_kind", "") == "TPD"
+                and attempt == 1
+                and 0 < getattr(error, "groq_retry_after", 0) <= GROQ_TPD_RETRY_WINDOW
+            ):
+                print(f"Groq {label} daily token capacity may recover soon; retrying once in {GROQ_TPD_RETRY_WINDOW:g} seconds", file=sys.stderr)
+                time.sleep(GROQ_TPD_RETRY_WINDOW)
+                continue
             if not retryable_groq_error(error):
                 status = {"status": "error", "attempts": attempt, "reason": last_error, "max_completion_tokens": max_completion_tokens}
                 if getattr(error, "groq_limit_kind", ""):
@@ -383,8 +392,8 @@ h2, h3 {{ break-after: avoid; page-break-after: avoid; }}
 </head><body><article>
 {reflection}
 {wellbeing}
-{market}
 {news}
+{market}
 <p><strong>Přeji hezký, klidný, šťastný a bezpečný den!</strong></p>
 </article></body></html>'''
 

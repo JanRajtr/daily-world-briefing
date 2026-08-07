@@ -21,7 +21,7 @@ The project collects public RSS/Atom feeds, ranks and deduplicates recent materi
 - Laboratory, animal, preclinical, Phase 1 and Phase 2 developments are excluded from the medical briefing.
 - The report links to every underlying source and contains no medical or investment recommendation.
 
-Independent reporting comes from the dedicated iROZHLAS domestic, world and science feeds and BBC World. Configured primary and specialist sources include the ECB, European Commission, Council of the EU, EMA, NATO, SIPRI, Bruegel, the European Society of Cardiology, Novartis and ASML. US and global sources add FDA, NCI, NEI, Harvard, IMF and BIS coverage. Edit `SOURCES` in `scripts/generate_report.py` to add or remove feeds.
+Independent reporting comes from the dedicated iROZHLAS domestic, world and science feeds and BBC World. Configured primary and specialist sources include the ECB, European Commission, Council of the EU, EMA, NATO, SIPRI, Bruegel, the European Society of Cardiology, Novartis and ASML. US and global sources add NCI, NEI, Harvard, IMF and BIS coverage; European medicines regulation is sourced from EMA rather than FDA. Edit `SOURCES` in `scripts/generate_report.py` to add or remove feeds.
 
 ## Local verification
 

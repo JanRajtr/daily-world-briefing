@@ -48,6 +48,24 @@ class GeneratorTests(unittest.TestCase):
         <description>Establishment of a cardio-oncology program in the Republic of Kazakhstan ESC 365</description></item></channel></rss>'''
         self.assertEqual(generator.parse_feed(medical, payload, date(2026, 8, 5)), [])
 
+    def test_rejects_generic_fda_approval_index(self):
+        source = generator.Source("US FDA — drugs", "https://example.test/rss", "medicine", "regulator", "United States")
+        payload = b'''<rss><channel><item><title>Oncology (Cancer)/Hematologic Malignancies Approval Notifications</title>
+        <link>https://www.fda.gov/drugs/resources-information-approved-drugs/oncology-cancer-hematologic-malignancies-approval-notifications</link>
+        <pubDate>Thu, 06 Aug 2026 10:00:00 GMT</pubDate>
+        <description>FDA does not issue approval announcements for every approved oncology drug or labeling update.</description></item></channel></rss>'''
+        self.assertEqual(generator.parse_feed(source, payload, date(2026, 8, 7)), [])
+
+    def test_fda_is_not_a_configured_source(self):
+        self.assertFalse(any("FDA" in source.name for source in generator.SOURCES))
+        self.assertTrue(any("European Medicines Agency" in source.name for source in generator.SOURCES))
+
+    def test_rejects_undated_feed_item_instead_of_treating_it_as_today(self):
+        source = generator.Source("News", "https://example.test/rss", "world", "independent-news", "Global")
+        payload = b'''<rss><channel><item><title>Undated evergreen page</title>
+        <link>https://example.test/evergreen</link><description>General background information without a publication date.</description></item></channel></rss>'''
+        self.assertEqual(generator.parse_feed(source, payload, date(2026, 8, 7)), [])
+
     def test_keeps_detailed_medical_advance(self):
         source = generator.Source("EMA", "https://example.test/feed", "medicine", "regulator", "Europe")
         payload = b'''<rss><channel><item><title>EMA recommends new glaucoma treatment</title>
@@ -96,6 +114,15 @@ class GeneratorTests(unittest.TestCase):
         briefing = {"overview": [], "sections": {"economy": [{"title": "Story", "summary": "Text", "item_ids": ["invented"]}]}}
         clean = generator.validate_briefing(briefing, [item])
         self.assertEqual(clean["sections"]["economy"], [])
+
+    def test_removes_generic_ai_importance_claim(self):
+        item = generator.Item("known", "Title", "https://example.test", "2026-08-04", "Source", "science", "regulator", "Europe")
+        briefing = {"overview": [], "sections": {section: [] for section in generator.SECTIONS}}
+        briefing["sections"]["science"] = [{
+            "title": "Story", "summary": "Sourced text", "why_it_matters": "Tato informace je důležitá pro pacienty a lékaře.", "item_ids": ["known"],
+        }]
+        clean = generator.validate_briefing(briefing, [item])
+        self.assertEqual(clean["sections"]["science"][0]["why_it_matters"], "")
 
     def test_ai_prompt_trims_long_source_text(self):
         item = generator.Item(
