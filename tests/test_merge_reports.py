@@ -163,16 +163,27 @@ class MergeTests(unittest.TestCase):
     def test_compound_request_uses_search_without_visiting_pages(self, urlopen):
         response = urlopen.return_value.__enter__.return_value
         response.read.return_value = b'{"choices":[{"message":{"content":"{}"}}]}'
-        merger.request_groq_json("prompt", "key", "groq/compound", 1234)
+        response.headers = {}
+        value, rate_limit = merger.request_groq_json("prompt", "key", "groq/compound", 1234)
         payload = json.loads(urlopen.call_args.args[0].data)
         self.assertEqual(payload["compound_custom"]["tools"]["enabled_tools"], ["web_search"])
         self.assertEqual(payload["max_completion_tokens"], 1234)
+        self.assertEqual(value, {})
+        self.assertEqual(rate_limit["reset_tokens_seconds"], 0)
+
+    @patch.object(merger, "request_groq_json")
+    def test_success_records_server_token_window(self, request):
+        request.return_value = ({"quote": {}}, {"limit_tokens": 30000, "remaining_tokens": 14000, "reset_tokens_seconds": 87.25})
+        _, status = merger.generate_with_retries("reflection", "prompt", "key", "model", 1000)
+        self.assertEqual(status["limit_tokens"], 30000)
+        self.assertEqual(status["remaining_tokens"], 14000)
+        self.assertEqual(status["reset_tokens_seconds"], 87.25)
 
     @patch.object(merger.time, "sleep")
     @patch.object(merger, "generate_with_retries")
     def test_reflection_survives_failure_in_other_daily_content(self, generate, sleep):
         generate.side_effect = [
-            ({"quote": self.sourced_content()["quote"], "buddhist_teaching": self.sourced_content()["buddhist_teaching"]}, {"status": "ok", "attempts": 1}),
+            ({"quote": self.sourced_content()["quote"], "buddhist_teaching": self.sourced_content()["buddhist_teaching"]}, {"status": "ok", "attempts": 1, "reset_tokens_seconds": 80}),
             ({}, {"status": "error", "attempts": 2, "reason": "timeout"}),
         ]
         content, status = merger.generate_daily_content("2026-08-06", "key", "groq/compound")
@@ -182,7 +193,7 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(generate.call_args_list[0].args[3], "groq/compound-mini")
         self.assertEqual(generate.call_args_list[1].args[3], "groq/compound")
         self.assertEqual(status["models"], {"reflection": "groq/compound-mini", "extras": "groq/compound"})
-        sleep.assert_called_once_with(merger.GROQ_REQUEST_SPACING)
+        sleep.assert_called_once_with(80.5)
 
     @patch.object(merger.time, "sleep")
     @patch.object(merger, "generate_with_retries")

@@ -173,15 +173,21 @@ def validate_daily_content(content: dict) -> dict:
     return clean
 
 
-def request_groq_json(prompt: str, api_key: str, model: str, max_completion_tokens: int) -> dict:
+def request_groq_json(prompt: str, api_key: str, model: str, max_completion_tokens: int) -> tuple[dict, dict]:
     payload = json.dumps({"model": model, "temperature": 0, "max_completion_tokens": max_completion_tokens, "response_format": {"type": "json_object"}, "compound_custom": {"tools": {"enabled_tools": ["web_search"]}}, "messages": [{"role": "system", "content": "Jsi přesný český rešeršér a překladatel. Bez dohledatelného webového zdroje obsah vynecháš."}, {"role": "user", "content": prompt}]}).encode()
     request = urllib.request.Request(GROQ_URL, data=payload, method="POST", headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "daily-world-briefing/1.0"})
     with urllib.request.urlopen(request, timeout=90) as response:
         result = json.loads(response.read())
+        headers = response.headers
     value = json.loads(result["choices"][0]["message"]["content"])
     if not isinstance(value, dict):
         raise ValueError("Groq response is not a JSON object")
-    return value
+    rate_limit = {
+        "limit_tokens": int(headers.get("x-ratelimit-limit-tokens", 0) or 0),
+        "remaining_tokens": int(headers.get("x-ratelimit-remaining-tokens", 0) or 0),
+        "reset_tokens_seconds": groq_duration_seconds(headers.get("x-ratelimit-reset-tokens")),
+    }
+    return value, rate_limit
 
 
 def groq_duration_seconds(value: str | None) -> float:
@@ -253,7 +259,10 @@ def generate_with_retries(label: str, prompt: str, api_key: str, model: str, max
     last_error = "unknown error"
     for attempt in range(1, attempts + 1):
         try:
-            return request_groq_json(prompt, api_key, model, max_completion_tokens), {"status": "ok", "attempts": attempt, "max_completion_tokens": max_completion_tokens}
+            value, rate_limit = request_groq_json(prompt, api_key, model, max_completion_tokens)
+            status = {"status": "ok", "attempts": attempt, "max_completion_tokens": max_completion_tokens}
+            status.update({key: value for key, value in rate_limit.items() if value})
+            return value, status
         except (OSError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as error:
             last_error = groq_error_reason(error)
             print(f"Groq {label} attempt {attempt}/{attempts} failed: {last_error}", file=sys.stderr)
@@ -272,7 +281,9 @@ Schéma: {{"quote":{{"text":"...","author":"...","work":"...","url":"https://...
     extras_prompt = f'''Pro den {report_date} použij webové vyhledávání a vrať pouze platný JSON. Najdi: (1) čtyři zdravé recepty pro jednoho dospělého dostupné v Česku, (2) praktické doporučení pro zdravé stárnutí z autoritativního zdravotnického zdroje, (3) dnešní či bezprostředně nadcházející události relevantní pro portfolio a makroekonomiku, (4) vysvětlení pouze skutečně neobvyklých dnešních pohybů sledovaných trhů a (5) kvalitní českou kulturní nebo historickou poznámku vztahující se k datu. Sledované nástroje a témata jsou SPYI, SPYL, SEC0, XNAS, QUTM, EGLN/XAU, XAIX, IWMO, ZPRV, NVS, NW0/CSG, ASME/ASML, BTC a ADA. Vše věrně přelož nebo shrň do češtiny; nic nevymýšlej. Každá položka musí mít přímý webový zdroj. Pokud některou část nenajdeš, neověříš nebo není relevantní, vrať null či prázdné pole.
 Schéma: {{"meals":[{{"meal":"Breakfast|Lunch|Snack|Dinner","name":"...","recipe":"úplný recept s množstvím a časy","source_title":"...","source_url":"https://..."}}]|null,"longevity_tip":{{"text":"...","author":"organizace nebo autor","work":"název stránky","url":"https://..."}}|null,"portfolio_events":[{{"title":"...","text":"...","url":"https://..."}}],"market_explanations":[{{"title":"...","text":"...","url":"https://..."}}],"cultural_note":{{"text":"...","author":"instituce nebo autor","work":"název stránky","url":"https://..."}}|null}}. Pole meal musí být v pořadí Breakfast, Lunch, Snack, Dinner.'''
     reflection, reflection_status = generate_with_retries("reflection", reflection_prompt, api_key, reflection_model, max_completion_tokens=1000)
-    time.sleep(GROQ_REQUEST_SPACING)
+    spacing = max(GROQ_REQUEST_SPACING, reflection_status.get("reset_tokens_seconds", 0) + 0.5)
+    print(f"Groq waiting {spacing:g} seconds before extras", file=sys.stderr)
+    time.sleep(spacing)
     extras, extras_status = generate_with_retries("extras", extras_prompt, api_key, model, max_completion_tokens=3200)
     content = validate_daily_content({**extras, **reflection})
     reflection_status["quote"] = "present" if content.get("quote") else "omitted"
