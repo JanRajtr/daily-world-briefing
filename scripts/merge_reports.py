@@ -266,12 +266,12 @@ def generate_with_retries(label: str, prompt: str, api_key: str, model: str, max
     return {}, {"status": "error", "attempts": attempts, "reason": last_error, "max_completion_tokens": max_completion_tokens}
 
 
-def generate_daily_content(report_date: str, api_key: str, model: str) -> tuple[dict, dict]:
+def generate_daily_content(report_date: str, api_key: str, model: str, reflection_model: str = "groq/compound-mini") -> tuple[dict, dict]:
     reflection_prompt = f'''Pro den {report_date} použij webové vyhledávání a vrať pouze platný JSON. Najdi (1) ověřitelný historický citát a (2) skutečné, konkrétní učení buddhistického učitele nebo badatele. Vše věrně přelož nebo shrň do češtiny; nic nevymýšlej. Každá položka musí mít autora, dílo nebo kontext a přímý webový zdroj. Pokud položku neověříš, vrať null.
 Schéma: {{"quote":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null,"buddhist_teaching":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null}}.'''
     extras_prompt = f'''Pro den {report_date} použij webové vyhledávání a vrať pouze platný JSON. Najdi: (1) čtyři zdravé recepty pro jednoho dospělého dostupné v Česku, (2) praktické doporučení pro zdravé stárnutí z autoritativního zdravotnického zdroje, (3) dnešní či bezprostředně nadcházející události relevantní pro portfolio a makroekonomiku, (4) vysvětlení pouze skutečně neobvyklých dnešních pohybů sledovaných trhů a (5) kvalitní českou kulturní nebo historickou poznámku vztahující se k datu. Sledované nástroje a témata jsou SPYI, SPYL, SEC0, XNAS, QUTM, EGLN/XAU, XAIX, IWMO, ZPRV, NVS, NW0/CSG, ASME/ASML, BTC a ADA. Vše věrně přelož nebo shrň do češtiny; nic nevymýšlej. Každá položka musí mít přímý webový zdroj. Pokud některou část nenajdeš, neověříš nebo není relevantní, vrať null či prázdné pole.
 Schéma: {{"meals":[{{"meal":"Breakfast|Lunch|Snack|Dinner","name":"...","recipe":"úplný recept s množstvím a časy","source_title":"...","source_url":"https://..."}}]|null,"longevity_tip":{{"text":"...","author":"organizace nebo autor","work":"název stránky","url":"https://..."}}|null,"portfolio_events":[{{"title":"...","text":"...","url":"https://..."}}],"market_explanations":[{{"title":"...","text":"...","url":"https://..."}}],"cultural_note":{{"text":"...","author":"instituce nebo autor","work":"název stránky","url":"https://..."}}|null}}. Pole meal musí být v pořadí Breakfast, Lunch, Snack, Dinner.'''
-    reflection, reflection_status = generate_with_retries("reflection", reflection_prompt, api_key, model, max_completion_tokens=1000)
+    reflection, reflection_status = generate_with_retries("reflection", reflection_prompt, api_key, reflection_model, max_completion_tokens=1000)
     time.sleep(GROQ_REQUEST_SPACING)
     extras, extras_status = generate_with_retries("extras", extras_prompt, api_key, model, max_completion_tokens=3200)
     content = validate_daily_content({**extras, **reflection})
@@ -279,7 +279,9 @@ Schéma: {{"meals":[{{"meal":"Breakfast|Lunch|Snack|Dinner","name":"...","recipe
     reflection_status["buddhist_teaching"] = "present" if content.get("buddhist_teaching") else "omitted"
     if reflection_status["status"] == "ok" and reflection_status["buddhist_teaching"] == "omitted":
         reflection_status["buddhist_teaching_reason"] = "Groq returned no teaching with text, author, work, and a valid source URL"
-    return content, {"model": model, "reflection": reflection_status, "extras": extras_status}
+    reflection_status["model"] = reflection_model
+    extras_status["model"] = model
+    return content, {"models": {"reflection": reflection_model, "extras": model}, "reflection": reflection_status, "extras": extras_status}
 
 
 def wellbeing_sections(report_date: str, weather: list[dict], content: dict, calendar: dict | None = None, fx: dict | None = None, air_quality: list[dict] | None = None) -> str:
@@ -405,8 +407,9 @@ def main() -> None:
     else:
         api_key = os.environ.get("GROQ_API_KEY", "")
         model = os.environ.get("GROQ_WEB_MODEL", "groq/compound")
+        reflection_model = os.environ.get("GROQ_REFLECTION_MODEL", "groq/compound-mini")
         if api_key:
-            daily_content, generation = generate_daily_content(market_meta["date"], api_key, model)
+            daily_content, generation = generate_daily_content(market_meta["date"], api_key, model, reflection_model)
         else:
             daily_content = {}
             generation = {"status": "error", "reason": "GROQ_API_KEY is not configured"}

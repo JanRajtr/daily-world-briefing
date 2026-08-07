@@ -179,6 +179,9 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(content["buddhist_teaching"]["author"], "Lama")
         self.assertEqual(status["reflection"]["buddhist_teaching"], "present")
         self.assertEqual(status["extras"]["status"], "error")
+        self.assertEqual(generate.call_args_list[0].args[3], "groq/compound-mini")
+        self.assertEqual(generate.call_args_list[1].args[3], "groq/compound")
+        self.assertEqual(status["models"], {"reflection": "groq/compound-mini", "extras": "groq/compound"})
         sleep.assert_called_once_with(merger.GROQ_REQUEST_SPACING)
 
     @patch.object(merger.time, "sleep")
