@@ -25,7 +25,7 @@ CALENDAR_URL = "https://svatkyapi.netlify.app/api/day"
 CNB_URL = "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.xml"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_TPM_COOLDOWN = 65.0
-GROQ_REQUEST_SPACING = 20.0
+GROQ_REQUEST_SPACING = 65.0
 WEATHER_LOCATIONS = {"Horoměřice": (50.1317, 14.3388), "Prague": (50.0755, 14.4378), "Česká Lípa": (50.6855, 14.5376)}
 WEATHER_CODES = {0: "Jasno", 1: "Převážně jasno", 2: "Polojasno", 3: "Zataženo", 45: "Mlha", 48: "Mrznoucí mlha", 51: "Slabé mrholení", 53: "Mrholení", 55: "Silné mrholení", 61: "Slabý déšť", 63: "Déšť", 65: "Silný déšť", 71: "Slabé sněžení", 73: "Sněžení", 75: "Silné sněžení", 80: "Slabé přeháňky", 81: "Přeháňky", 82: "Silné přeháňky", 85: "Slabé sněhové přeháňky", 86: "Silné sněhové přeháňky", 95: "Bouřky", 96: "Bouřky s kroupami", 99: "Silné bouřky s kroupami"}
 
