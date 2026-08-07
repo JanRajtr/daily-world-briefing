@@ -21,13 +21,13 @@ class GeneratorTests(unittest.TestCase):
         <description>Semiconductor equipment rules affect trade with China.</description></item></channel></rss>'''
         items = generator.parse_feed(source, payload, date(2026, 8, 5))
         self.assertEqual(len(items), 1)
-        self.assertEqual(items[0].section, "geopolitics")
+        self.assertEqual(items[0].section, "economy")
         self.assertIn("ASME", items[0].watchlist)
         self.assertIn("SEC0", items[0].watchlist)
 
     def test_medical_terms_override_default_section(self):
         source = generator.Source("University", "x", "economy", "university", "Europe")
-        self.assertEqual(generator.classify(source, "New glaucoma treatment", "Phase 3 trial"), "medicine")
+        self.assertEqual(generator.classify(source, "New glaucoma treatment", "Phase 3 trial"), "science")
 
     def test_rejects_thin_google_index_and_local_program_items(self):
         source = generator.Source(
@@ -55,7 +55,7 @@ class GeneratorTests(unittest.TestCase):
         <description>A phase 3 trial in 700 patients found improved control compared with standard care.</description></item></channel></rss>'''
         items = generator.parse_feed(source, payload, date(2026, 8, 5))
         self.assertEqual(len(items), 1)
-        self.assertEqual(items[0].section, "medicine")
+        self.assertEqual(items[0].section, "science")
 
     def test_eye_scope_rejects_general_retinal_news_and_early_trials(self):
         source = generator.Source("Journal", "https://example.test/feed", "medicine", "university", "Europe")
@@ -100,7 +100,7 @@ class GeneratorTests(unittest.TestCase):
     def test_ai_prompt_trims_long_source_text(self):
         item = generator.Item(
             "known", "Cancer trial", "https://example.test", "2026-08-04", "Journal",
-            "medicine", "peer-reviewed", "Europe", summary="x" * 5000,
+            "science", "peer-reviewed", "Europe", summary="x" * 5000,
         )
         prompt = generator.ai_prompt([item], date(2026, 8, 5))
         self.assertNotIn("x" * 901, prompt)
@@ -108,13 +108,15 @@ class GeneratorTests(unittest.TestCase):
 
     def test_default_editorial_selection_is_bounded(self):
         items = []
-        for section, count in (("economy", 20), ("geopolitics", 20), ("medicine", 20)):
+        for section, count in (("czech_eu", 20), ("world", 20), ("economy", 20), ("science", 20)):
             for index in range(count):
                 items.append(generator.Item(str(index) + section, f"Title {index}", "https://example.test", "2026-08-04", "Source", section, "official", "Europe", score=index))
         selected = generator.select_items(items)
-        self.assertEqual(sum(item.section == "economy" for item in selected), 8)
-        self.assertEqual(sum(item.section == "geopolitics" for item in selected), 0)
-        self.assertEqual(sum(item.section == "medicine" for item in selected), 0)
+        self.assertEqual(sum(item.section == "czech_eu" for item in selected), 2)
+        self.assertEqual(sum(item.section == "world" for item in selected), 2)
+        self.assertEqual(sum(item.section == "economy" for item in selected), 1)
+        self.assertEqual(sum(item.section == "science" for item in selected), 1)
+        self.assertEqual(len(selected), 6)
 
     def test_company_source_is_visibly_labelled(self):
         item = generator.Item("company", "Company result", "https://example.test", "2026-08-04", "Novartis", "economy", "company", "Europe", watchlist=["NVS"])
@@ -131,10 +133,9 @@ class GeneratorTests(unittest.TestCase):
             generator.main()
             page = (Path(directory) / "index.html").read_text()
             metadata = json.loads((Path(directory) / "report.json").read_text())
-        self.assertNotIn("Global geopolitics", page)
-        self.assertNotIn("Medical progress, care and longevity", page)
+        self.assertIn("Světová ekonomika a portfolio", page)
         self.assertFalse(metadata["ai_used"])
-        self.assertEqual(metadata["selected_items"], 3)
+        self.assertEqual(metadata["selected_items"], 1)
 
     def test_empty_fixture_publishes_transparent_empty_digest(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -145,9 +146,22 @@ class GeneratorTests(unittest.TestCase):
                 generator.main()
             page = (output / "index.html").read_text()
             metadata = json.loads((output / "report.json").read_text())
-        self.assertIn("V nastavených zdrojích nebyly dostatečně relevantní nedávné ekonomické zprávy", page)
-        self.assertIn("V nastavených zdrojích nebyly dostatečně relevantní zprávy", page)
+        self.assertNotIn("<h2>Dnes stručně</h2>", page)
+        self.assertNotIn("<ol>", page)
         self.assertEqual(metadata["selected_items"], 0)
+
+    def test_ai_story_must_stay_in_its_sourced_section(self):
+        item = generator.Item("known", "Title", "https://example.test", "2026-08-04", "Source", "world", "independent-news", "Global")
+        briefing = {"overview": [], "sections": {section: [] for section in generator.SECTIONS}}
+        briefing["sections"]["czech_eu"] = [{"title": "Story", "summary": "Text", "item_ids": ["known"]}]
+        clean = generator.validate_briefing(briefing, [item])
+        self.assertEqual(clean["sections"]["czech_eu"], [])
+
+    def test_fallback_never_invents_content_for_item_without_summary(self):
+        item = generator.Item("known", "Real title", "https://example.test", "2026-08-04", "Source", "world", "independent-news", "Global")
+        briefing = generator.fallback_briefing([item])
+        self.assertEqual(briefing["overview"], [])
+        self.assertEqual(briefing["sections"]["world"], [])
 
 
 if __name__ == "__main__":

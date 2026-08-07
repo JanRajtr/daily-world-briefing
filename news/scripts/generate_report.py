@@ -24,8 +24,9 @@ USER_AGENT = "daily-news-briefing/1.0 (public-feed reader)"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 PUBMED_SEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 PUBMED_FETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
-SECTIONS = ("economy",)
-DISABLED_SECTIONS = {"geopolitics", "medicine"}
+SECTIONS = ("czech_eu", "world", "economy", "science")
+SECTION_LIMITS = {"czech_eu": 2, "world": 2, "economy": 1, "science": 1}
+DISABLED_SECTIONS: set[str] = set()
 
 
 @dataclass(frozen=True)
@@ -42,13 +43,17 @@ class Source:
 # Primary institutions and editorially independent research sources are preferred.
 # Corporate feeds are useful primary evidence, but are explicitly labelled as such.
 SOURCES = (
+    Source("iROZHLAS — domov", "https://www.irozhlas.cz/rss/irozhlas/section/zpravy-domov", "czech_eu", "independent-news", "Czechia", tags=("Czechia",)),
+    Source("iROZHLAS — svět", "https://www.irozhlas.cz/rss/irozhlas/section/zpravy-svet", "world", "independent-news", "Global"),
+    Source("BBC News — world", "https://feeds.bbci.co.uk/news/world/rss.xml", "world", "independent-news", "Global"),
+    Source("iROZHLAS — věda a technologie", "https://www.irozhlas.cz/rss/irozhlas/section/veda-technologie", "science", "independent-news", "Czechia", tags=("science", "technology")),
     Source("European Central Bank", "https://www.ecb.europa.eu/rss/press.html", "economy", "official", "Europe", tags=("ECB", "rates", "euro")),
     Source("IMF", "https://news.google.com/rss/search?q=site%3Aimf.org%2Fen%2FNews+when%3A4d&hl=en&gl=US&ceid=US%3Aen", "economy", "official", "Global", tags=("macro", "trade")),
     Source("Bank for International Settlements", "https://www.bis.org/doclist/all_pressrels.rss", "economy", "official", "Global", tags=("banks", "rates")),
-    Source("European Commission Press Corner", "https://ec.europa.eu/commission/presscorner/api/rss?language=en", "geopolitics", "official", "Europe", tags=("EU", "trade", "sanctions")),
-    Source("Council of the European Union", "https://news.google.com/rss/search?q=site%3Aconsilium.europa.eu%2Fen%2Fpress%2Fpress-releases+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "geopolitics", "official", "Europe", tags=("EU", "sanctions", "security")),
-    Source("NATO", "https://news.google.com/rss/search?q=site%3Anato.int%2Fcps%2Fen%2Fnatohq%2Fnews+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "geopolitics", "official", "Europe", tags=("NATO", "security", "defence")),
-    Source("SIPRI", "https://news.google.com/rss/search?q=site%3Asipri.org+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "geopolitics", "independent-analysis", "Europe", tags=("security", "defence")),
+    Source("European Commission Press Corner", "https://ec.europa.eu/commission/presscorner/api/rss?language=en", "czech_eu", "official", "Europe", tags=("EU", "trade", "sanctions")),
+    Source("Council of the European Union", "https://news.google.com/rss/search?q=site%3Aconsilium.europa.eu%2Fen%2Fpress%2Fpress-releases+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "czech_eu", "official", "Europe", tags=("EU", "sanctions", "security")),
+    Source("NATO", "https://news.google.com/rss/search?q=site%3Anato.int%2Fcps%2Fen%2Fnatohq%2Fnews+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "world", "official", "Europe", tags=("NATO", "security", "defence")),
+    Source("SIPRI", "https://news.google.com/rss/search?q=site%3Asipri.org+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "world", "independent-analysis", "Europe", tags=("security", "defence")),
     Source("Bruegel", "https://news.google.com/rss/search?q=site%3Abruegel.org+when%3A4d&hl=en&gl=EU&ceid=US%3Aen", "economy", "independent-analysis", "Europe", tags=("EU", "macro", "trade")),
     Source("European Medicines Agency — news", "https://www.ema.europa.eu/en/news.xml", "medicine", "regulator", "Europe", tags=("approval", "safety", "medicine")),
     Source("European Medicines Agency — new medicines", "https://www.ema.europa.eu/en/new-human-medicine-new.xml", "medicine", "regulator", "Europe", tags=("approval", "medicine")),
@@ -183,10 +188,8 @@ def item_link(node: ET.Element) -> str:
 
 def classify(source: Source, title: str, summary: str) -> str:
     text = f"{title} {summary}".lower()
-    if any(term.lower() in text for term in MEDICAL_TERMS):
-        return "medicine"
-    if any(term.lower() in text for term in GEOPOLITICAL_TERMS):
-        return "geopolitics"
+    if source.default_section == "science" or source.source_type in ("regulator", "public-research", "university", "professional-society", "peer-reviewed"):
+        return "science"
     return source.default_section
 
 
@@ -230,7 +233,7 @@ def parse_feed(source: Source, payload: bytes, report_date: date, lookback_days:
             continue
         if "warning-letters/" in url.lower() or re.search(r"\b\d{6}\s*-\s*\d{2}/\d{2}/\d{4}\b", title):
             continue
-        if section == "medicine":
+        if section == "science" and source.source_type in ("regulator", "public-research", "university", "professional-society"):
             if not in_medical_scope(relevance_text):
                 continue
             if not any(term in relevance_text for term in MEDICAL_PRIORITY_TERMS):
@@ -333,7 +336,7 @@ def parse_pubmed(payload: bytes, report_date: date) -> list[Item]:
             score -= 12
         items.append(Item(
             identifier, title, f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/", report_date.isoformat(),
-            f"{journal} via PubMed", "medicine", "peer-reviewed", "Global", summary,
+            f"{journal} via PubMed", "science", "peer-reviewed", "Global", summary,
             tags, watchlist_matches(combined), score,
         ))
     return items
@@ -381,7 +384,7 @@ def deduplicate(items: list[Item]) -> list[Item]:
 
 
 def select_items(items: list[Item], limits: dict[str, int] | None = None) -> list[Item]:
-    limits = limits or {"economy": 8}
+    limits = limits or SECTION_LIMITS
     selected = []
     for section in SECTIONS:
         candidates = [item for item in items if item.section == section]
@@ -395,11 +398,11 @@ def ai_prompt(items: list[Item], report_date: date) -> str:
         record = {key: value for key, value in asdict(item).items() if key not in ("score",)}
         record["summary"] = record["summary"][:900]
         records.append(record)
-    return f"""Vytvoř stručný denní přehled v přirozené češtině pro {report_date.isoformat()} POUZE z dodaných záznamů. Překládej a zkracuj věrně; nevymýšlej souvislosti ani fakta.
+    return f"""Vytvoř stručný denní přehled v přirozené češtině pro {report_date.isoformat()} POUZE z dodaných záznamů. Překládej a zkracuj věrně; nevymýšlej souvislosti, fakta, nejistoty ani prognózy.
 Return valid JSON, with no markdown, in this exact shape:
-{{"overview":["..."],"sections":{{"economy":[STORY]}}}}
-Each STORY is {{"title":"...","summary":"2-3 factual sentences in Czech","why_it_matters":"...","item_ids":["id"],"evidence":"label in Czech"}}.
-Use 4-6 economy stories when material permits. Merge records about the same event and cite all their IDs. Never add a fact absent from the records. Treat company and government claims as attributed claims, not independent confirmation. Explain relevant watchlist connections without forecasting prices. If evidence is thin, omit the story. Veškerý redakční text musí být česky; vlastní názvy a názvy zdrojů mohou zůstat v originále.
+{{"overview":["..."],"sections":{{"czech_eu":[STORY],"world":[STORY],"economy":[STORY],"science":[STORY]}}}}
+Each STORY is {{"title":"...","summary":"nejvýše 2 faktické věty v češtině","why_it_matters":"nejvýše 1 věta doložená záznamem","unknown":"co zdroj výslovně ponechává nejisté, jinak prázdný text","certainty":"potvrzené|předběžné|tvrzení jedné strany","item_ids":["id"],"evidence":"stručný typ zdroje v češtině"}}.
+Dodrž limity czech_eu nejvýše 2, world nejvýše 2, economy nejvýše 1 a science nejvýše 1. Overview smí pouze stručně shrnout vybrané STORY; při prázdném výběru vrať prázdné pole. Slučuj pouze záznamy o stejné události a cituj všechna jejich ID. Nikdy nepřidávej fakt nepřítomný v záznamech. Firemní, vládní a vojenská tvrzení vždy připiš původci a označ jako tvrzení jedné strany, pokud je nepotvrzuje nezávislý záznam. Nevytvářej cenové prognózy. Je-li podklad slabý, zprávu vynech. Veškerý redakční text musí být česky; vlastní názvy a názvy zdrojů mohou zůstat v originále.
 RECORDS:
 {json.dumps(records, ensure_ascii=False)}"""
 
@@ -435,54 +438,49 @@ def validate_briefing(briefing: dict, items: list[Item]) -> dict:
         clean = []
         for story in stories:
             ids = story.get("item_ids", []) if isinstance(story, dict) else []
-            if story.get("title") and story.get("summary") and ids and all(identifier in valid_ids for identifier in ids):
+            if story.get("title") and story.get("summary") and ids and all(identifier in valid_ids for identifier in ids) and all(next(item for item in items if item.id == identifier).section == section for identifier in ids):
                 clean.append({
                     "title": clean_text(str(story["title"])),
                     "summary": clean_text(str(story["summary"])),
                     "why_it_matters": clean_text(str(story.get("why_it_matters", ""))),
+                    "unknown": clean_text(str(story.get("unknown", ""))),
+                    "certainty": clean_text(str(story.get("certainty", ""))),
                     "evidence": clean_text(str(story.get("evidence", ""))),
                     "item_ids": ids,
                 })
-        sections[section] = clean
+        sections[section] = clean[:SECTION_LIMITS[section]]
     briefing["overview"] = [clean_text(str(value)) for value in briefing.get("overview", []) if clean_text(str(value))][:5]
     return briefing
 
 
 def fallback_briefing(items: list[Item]) -> dict:
     sections = {}
-    limits = {"economy": 6}
     for section in SECTIONS:
         stories = []
-        for item in sorted((value for value in items if value.section == section), key=lambda value: value.score, reverse=True)[:limits[section]]:
-            attribution = f"{item.source} reports: " if item.source_type in ("company", "official") else ""
-            if item.watchlist:
-                why = f"Watchlist relevance: {', '.join(item.watchlist)}."
-            elif section == "geopolitics":
-                why = "Potential relevance to European security, trade, energy or cross-border economic conditions."
-            elif section == "medicine":
-                focus = ", ".join(tag for tag in item.tags if tag not in ("research", "health", "medicine"))
-                why = f"Relevant to the briefing's medical focus{': ' + focus if focus else ''}."
-            else:
-                why = "Potential relevance to global economic conditions and European markets."
+        for item in sorted((value for value in items if value.section == section and value.summary), key=lambda value: value.score, reverse=True)[:SECTION_LIMITS[section]]:
+            attribution = f"{item.source}: " if item.source_type in ("company", "official") else ""
             stories.append({
                 "title": item.title,
-                "summary": attribution + (item.summary or "The source supplied no public summary; follow the source link for details."),
-                "why_it_matters": why,
+                "summary": attribution + item.summary,
+                "why_it_matters": "",
+                "unknown": "",
+                "certainty": "tvrzení jedné strany" if item.source_type in ("company", "official") else "",
                 "evidence": f"Extractive fallback; {item.source_type} source",
                 "item_ids": [item.id],
             })
         sections[section] = stories
-    overview = (
-        ["V nastavených zdrojích nebyly dostatečně relevantní nedávné ekonomické zprávy."]
-        if not items else
-        ["Překlad nebyl dostupný; toto vydání používá původní názvy a úryvky z veřejných kanálů."]
-    )
+    overview = [story["title"] for section in SECTIONS for story in sections[section]][:5]
     return {"overview": overview, "sections": sections}
 
 
 def render_report(report_date: date, briefing: dict, items: list[Item], failures: list[str], generated_at: str, ai_used: bool) -> str:
     by_id = {item.id: item for item in items}
-    labels = {"economy": "Světová ekonomika a portfolio"}
+    labels = {
+        "czech_eu": "Česko a Evropská unie",
+        "world": "Podstatné zprávy ze světa",
+        "economy": "Světová ekonomika a portfolio",
+        "science": "Věda, zdraví a technologie",
+    }
     overview = "".join(f"<li>{html.escape(value)}</li>" for value in briefing.get("overview", []))
     sections_html = []
     for section in SECTIONS:
@@ -502,25 +500,27 @@ def render_report(report_date: date, briefing: dict, items: list[Item], failures
             stories_html.append(
                 f'<li><h3>{html.escape(story["title"])}</h3>'
                 f'<p>{html.escape(story["summary"])}</p>'
-                f'<p><strong>Proč je to důležité:</strong> {html.escape(story.get("why_it_matters", ""))}</p>'
+                + (f'<p><strong>Proč je to důležité:</strong> {html.escape(story["why_it_matters"])}</p>' if story.get("why_it_matters") else "")
+                + (f'<p><strong>Co zatím nevíme:</strong> {html.escape(story["unknown"])}</p>' if story.get("unknown") else "")
+                + (f'<p><strong>Jistota:</strong> {html.escape(story["certainty"])}</p>' if story.get("certainty") else "")
                 + (f'<p><strong>Sledované nástroje:</strong> {html.escape(", ".join(sorted(watchlist)))}</p>' if watchlist else "")
                 + (f'<p><strong>Typ důkazu/zdroje:</strong> {html.escape(label)}</p>' if label else "")
                 + f'<p><strong>Zdroje:</strong> {"; ".join(sources)}</p></li>'
             )
-        empty = "<p>V nastavených zdrojích nebyly dostatečně relevantní zprávy.</p>" if not stories_html else ""
-        sections_html.append(f'<h2>{labels[section]}</h2>{empty}<ol>{"".join(stories_html)}</ol>')
+        if stories_html:
+            sections_html.append(f'<h2>{labels[section]}</h2><ol>{"".join(stories_html)}</ol>')
     warning = f'<p><strong>Upozornění zdrojů:</strong> {html.escape("; ".join(failures))}</p>' if failures else ""
     mode = "strojový překlad a shrnutí založené na zdrojích" if ai_used else "výpis původních úryvků bez překladu"
     return f'''<!doctype html>
 <html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Denní ekonomický přehled — {report_date.isoformat()}</title><meta name="description" content="Denní přehled světové ekonomiky a portfolia.">
+<title>Podstatné denní zprávy — {report_date.isoformat()}</title><meta name="description" content="Omezený, zdrojově podložený přehled podstatných zpráv.">
 </head><body><article>
-<p><strong>Denní ekonomický přehled — {report_date.isoformat()}.</strong> Světová ekonomika a portfolio.</p>
-<h2>Dnes stručně</h2><ul>{overview}</ul>
+<p><strong>Podstatné denní zprávy — {report_date.isoformat()}.</strong> Nejvýše šest doložených událostí bez nekonečného proudu aktualizací.</p>
+{f'<h2>Dnes stručně</h2><ul>{overview}</ul>' if overview else ''}
 {''.join(sections_html)}
 {warning}
 <h2>Redakční metoda</h2>
-<p>Ekonomické zdroje jsou řazeny podle autority a nezávislosti. Firemní a vládní tvrzení jsou vždy připsána původci a nepovažují se za nezávislé potvrzení. Geopolitické a medicínské/vědecké zprávy jsou nyní vypnuté. Přehled má informační charakter a není investičním doporučením.</p>
+<p>Výběr je omezen na dvě zprávy z Česka/EU, dvě ze světa, jednu ekonomickou a jednu vědeckou. Firemní, vládní a vojenská tvrzení jsou připsána původci a nepovažují se sama o sobě za nezávislé potvrzení. Bez konkrétního zdrojového záznamu se zpráva nevytvoří. Přehled má informační charakter a není investičním ani lékařským doporučením.</p>
 <p>Vygenerováno {generated_at} UTC; režim: {mode}. Systém zpracoval {len(items)} vybraných záznamů z veřejných kanálů. Odkazy vedou na původní zdroje.</p>
 </article></body></html>'''
 

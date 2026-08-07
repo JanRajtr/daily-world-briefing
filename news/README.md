@@ -1,18 +1,19 @@
 # Daily World Briefing
 
-A daily, source-grounded briefing covering:
+A deliberately bounded, source-grounded briefing covering at most six stories:
 
-- the global economy with explicit connections to the market-risk briefing watchlist;
-- consequential global geopolitics;
-- clinically available or near-available progress in cancer and cardiovascular care;
-- glaucoma care, corneal or eye transplantation, and recovery after ocular accidents or trauma;
-- evidence-based longevity updates when credible human evidence exists.
+- two consequential developments from Czechia or the European Union;
+- two consequential global developments;
+- one global-economy story with explicit connections to the market-risk watchlist;
+- one science, health or technology development supported by substantive evidence.
 
 The project collects public RSS/Atom feeds, ranks and deduplicates recent material, asks Groq's free API (`llama-3.3-70b-versatile`) for a cited synthesis, generates a lightweight static HTML article, deploys it to GitHub Pages and optionally sends it to two Instapaper accounts. If a publisher advertises no working direct feed, a narrowly scoped Google News RSS query is used only to discover pages on that publisher's own domain. If AI is unavailable, the project publishes an extractive source digest instead.
 
 ## Editorial safeguards
 
 - AI receives only feed records and must cite their internal IDs. Unknown citations are rejected.
+- Stories cited into a different editorial section are rejected, and category limits are enforced again after AI output.
+- If no sourced record exists, no replacement story or hardcoded factual content is published.
 - Regulators, public research institutions and primary records receive the highest ranking.
 - Company releases are retained as valuable primary evidence but are visibly labelled as interested-party sources.
 - Government and military statements are attributed rather than treated as independent verification.
@@ -20,7 +21,7 @@ The project collects public RSS/Atom feeds, ranks and deduplicates recent materi
 - Laboratory, animal, preclinical, Phase 1 and Phase 2 developments are excluded from the medical briefing.
 - The report links to every underlying source and contains no medical or investment recommendation.
 
-Configured European sources include the ECB, European Commission, Council of the EU, EMA, NATO, SIPRI, Bruegel, the European Society of Cardiology, Novartis and ASML. US and global sources add FDA, NCI, NEI, Harvard, IMF and BIS coverage. A structured PubMed search adds recent clinical trials, systematic reviews, meta-analyses and guidelines with substantive abstracts for cancer, cardiovascular disease and eye care. Edit `SOURCES` in `scripts/generate_report.py` to add or remove feeds.
+Independent reporting comes from the dedicated iROZHLAS domestic, world and science feeds and BBC World. Configured primary and specialist sources include the ECB, European Commission, Council of the EU, EMA, NATO, SIPRI, Bruegel, the European Society of Cardiology, Novartis and ASML. US and global sources add FDA, NCI, NEI, Harvard, IMF and BIS coverage. Edit `SOURCES` in `scripts/generate_report.py` to add or remove feeds.
 
 ## Local verification
 

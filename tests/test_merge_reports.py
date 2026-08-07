@@ -50,6 +50,15 @@ class MergeTests(unittest.TestCase):
         self.assertLess(page.index("Tip pro zdravé stárnutí"), page.index("Market component"))
         self.assertTrue(page.index("Přeji hezký") > page.index("Tip pro zdravé stárnutí"))
 
+    def test_major_sections_start_on_new_ereader_page(self):
+        page = merger.merge_pages(
+            "<article><h2>Situace na trzích</h2><p>Market</p></article>",
+            "<article><h2>Ekonomické zprávy</h2><p>News</p></article>",
+            "2026-08-05", [], {},
+        )
+        self.assertIn("article > h2 { break-before: page; page-break-before: always; }", page)
+        self.assertIn("article > h2:first-child { break-before: auto; page-break-before: auto; }", page)
+
     def test_rejects_page_without_article(self):
         with self.assertRaisesRegex(ValueError, "no <article>"):
             merger.article_body("<html></html>")

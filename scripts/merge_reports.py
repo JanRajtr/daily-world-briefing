@@ -284,7 +284,7 @@ def merge_pages(market_page: str, news_page: str, report_date: str, weather: lis
     if include_news:
         news = article_body(news_page)
         news = re.sub(
-            r'^\s*<p><strong>Daily (?:World|Economy) Briefing.*?</p>',
+            r'^\s*<p><strong>(?:Daily (?:World|Economy) Briefing|Podstatné denní zprávy).*?</p>',
             "<h2>Ekonomické zprávy</h2>",
             news,
             count=1,
@@ -298,6 +298,11 @@ def merge_pages(market_page: str, news_page: str, report_date: str, weather: lis
 <html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Denní přehled trhů a zdravého života — {safe_date}</title>
 <meta name="description" content="Denní přehled tržního rizika, portfolia, ekonomiky, počasí, receptů a zdravého stárnutí.">
+<style>
+article > h2 {{ break-before: page; page-break-before: always; }}
+article > h2:first-child {{ break-before: auto; page-break-before: auto; }}
+h2, h3 {{ break-after: avoid; page-break-after: avoid; }}
+</style>
 </head><body><article>
 {reflection}
 {wellbeing}

@@ -16,6 +16,7 @@ Rešerše citátu a buddhistického učení běží odděleně od ostatního den
 - `.../report.json` — metadata for the current report
 - a composite 0–100 score based on VIX, S&P 500 drawdown and realized volatility, high-yield spreads, financial conditions, the 10Y–2Y curve, unemployment momentum, CPI inflation and a Brent oil shock
 - a market watchlist showing each instrument's EUR price, one-day and one-month moves, distance from its trailing 252-session high, and position versus its 50-day average
+- page breaks before major sections for cleaner pagination in Kobo and other EPUB-style readers
 
 The HTML uses a single semantic `<article>`, real headings and lists, no JavaScript, no external fonts and no images. This gives Instapaper a clean article to parse and keeps the Kobo version light. The watchlist deliberately uses list items instead of a table because Kobo's Instapaper integration flattens table cells.
 
