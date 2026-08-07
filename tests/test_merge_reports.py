@@ -128,13 +128,24 @@ class MergeTests(unittest.TestCase):
         headers = Message()
         headers["Retry-After"] = "17"
         error = urllib.error.HTTPError("https://api.groq.test", 429, "Too Many Requests", headers, None)
-        self.assertEqual(merger.retry_delay(error, 1), 17)
+        self.assertEqual(merger.retry_delay(error, 1), merger.GROQ_TPM_COOLDOWN)
 
     def test_rate_limit_retry_uses_decimal_delay_from_error_body(self):
         body = BytesIO(b'{"error":{"message":"Please try again in 9.516s."}}')
         error = urllib.error.HTTPError("https://api.groq.test", 429, "Too Many Requests", {}, body)
         merger.groq_error_reason(error)
-        self.assertAlmostEqual(merger.retry_delay(error, 1), 10.016)
+        self.assertEqual(merger.retry_delay(error, 1), merger.GROQ_TPM_COOLDOWN)
+
+    def test_rate_limit_retry_honors_longer_token_reset_header(self):
+        headers = Message()
+        headers["Retry-After"] = "2"
+        headers["x-ratelimit-reset-tokens"] = "1m15.25s"
+        error = urllib.error.HTTPError("https://api.groq.test", 429, "Too Many Requests", headers, None)
+        self.assertEqual(merger.retry_delay(error, 1), 75.75)
+
+    def test_parses_groq_reset_duration(self):
+        self.assertEqual(merger.groq_duration_seconds("2m59.56s"), 179.56)
+        self.assertEqual(merger.groq_duration_seconds("7.66s"), 7.66)
 
     @patch.object(merger.time, "sleep")
     @patch.object(merger, "request_groq_json")
@@ -157,8 +168,9 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(payload["compound_custom"]["tools"]["enabled_tools"], ["web_search"])
         self.assertEqual(payload["max_completion_tokens"], 1234)
 
+    @patch.object(merger.time, "sleep")
     @patch.object(merger, "generate_with_retries")
-    def test_reflection_survives_failure_in_other_daily_content(self, generate):
+    def test_reflection_survives_failure_in_other_daily_content(self, generate, sleep):
         generate.side_effect = [
             ({"quote": self.sourced_content()["quote"], "buddhist_teaching": self.sourced_content()["buddhist_teaching"]}, {"status": "ok", "attempts": 1}),
             ({}, {"status": "error", "attempts": 2, "reason": "timeout"}),
@@ -167,9 +179,11 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(content["buddhist_teaching"]["author"], "Lama")
         self.assertEqual(status["reflection"]["buddhist_teaching"], "present")
         self.assertEqual(status["extras"]["status"], "error")
+        sleep.assert_called_once_with(merger.GROQ_REQUEST_SPACING)
 
+    @patch.object(merger.time, "sleep")
     @patch.object(merger, "generate_with_retries")
-    def test_reports_why_buddhist_teaching_was_rejected(self, generate):
+    def test_reports_why_buddhist_teaching_was_rejected(self, generate, _sleep):
         generate.side_effect = [
             ({"buddhist_teaching": {"text": "Učení bez zdroje", "author": "Lama", "work": "Výklad"}}, {"status": "ok", "attempts": 1}),
             ({}, {"status": "ok", "attempts": 1}),

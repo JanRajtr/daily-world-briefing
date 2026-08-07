@@ -24,6 +24,8 @@ AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 CALENDAR_URL = "https://svatkyapi.netlify.app/api/day"
 CNB_URL = "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.xml"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_TPM_COOLDOWN = 65.0
+GROQ_REQUEST_SPACING = 20.0
 WEATHER_LOCATIONS = {"Horoměřice": (50.1317, 14.3388), "Prague": (50.0755, 14.4378), "Česká Lípa": (50.6855, 14.5376)}
 WEATHER_CODES = {0: "Jasno", 1: "Převážně jasno", 2: "Polojasno", 3: "Zataženo", 45: "Mlha", 48: "Mrznoucí mlha", 51: "Slabé mrholení", 53: "Mrholení", 55: "Silné mrholení", 61: "Slabý déšť", 63: "Déšť", 65: "Silný déšť", 71: "Slabé sněžení", 73: "Sněžení", 75: "Silné sněžení", 80: "Slabé přeháňky", 81: "Přeháňky", 82: "Silné přeháňky", 85: "Slabé sněhové přeháňky", 86: "Silné sněhové přeháňky", 95: "Bouřky", 96: "Bouřky s kroupami", 99: "Silné bouřky s kroupami"}
 
@@ -182,9 +184,21 @@ def request_groq_json(prompt: str, api_key: str, model: str, max_completion_toke
     return value
 
 
+def groq_duration_seconds(value: str | None) -> float:
+    """Parse Groq reset durations such as 7.66s or 2m59.56s."""
+    if not value:
+        return 0
+    match = re.fullmatch(r"\s*(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?\s*", value)
+    if not match or not any(match.groups()):
+        return 0
+    return float(match.group(1) or 0) * 60 + float(match.group(2) or 0)
+
+
 def retry_delay(error: BaseException, attempt: int, maximum: float = 120.0) -> float:
     """Honor Groq's Retry-After header, with exponential backoff as a fallback."""
-    value = error.headers.get("Retry-After") if isinstance(error, urllib.error.HTTPError) and error.headers else None
+    headers = error.headers if isinstance(error, urllib.error.HTTPError) and error.headers else {}
+    value = headers.get("Retry-After")
+    reset_delay = groq_duration_seconds(headers.get("x-ratelimit-reset-tokens"))
     if value:
         try:
             delay = float(value)
@@ -194,10 +208,19 @@ def retry_delay(error: BaseException, attempt: int, maximum: float = 120.0) -> f
             except (TypeError, ValueError, OverflowError):
                 delay = 0
         if delay > 0:
+            if isinstance(error, urllib.error.HTTPError) and error.code == 429:
+                delay = max(delay + 0.5, GROQ_TPM_COOLDOWN)
+            delay = max(delay, reset_delay + 0.5 if reset_delay else 0)
             return min(delay, maximum)
     body_delay = getattr(error, "groq_retry_after", 0)
     if body_delay > 0:
-        return min(body_delay + 0.5, maximum)
+        delay = body_delay + 0.5
+        if isinstance(error, urllib.error.HTTPError) and error.code == 429:
+            delay = max(delay, GROQ_TPM_COOLDOWN)
+        delay = max(delay, reset_delay + 0.5 if reset_delay else 0)
+        return min(delay, maximum)
+    if reset_delay:
+        return min(max(reset_delay + 0.5, GROQ_TPM_COOLDOWN), maximum)
     return min(5.0 * 2 ** (attempt - 1), maximum)
 
 
@@ -249,6 +272,7 @@ Schéma: {{"quote":{{"text":"...","author":"...","work":"...","url":"https://...
     extras_prompt = f'''Pro den {report_date} použij webové vyhledávání a vrať pouze platný JSON. Najdi: (1) čtyři zdravé recepty pro jednoho dospělého dostupné v Česku, (2) praktické doporučení pro zdravé stárnutí z autoritativního zdravotnického zdroje, (3) dnešní či bezprostředně nadcházející události relevantní pro portfolio a makroekonomiku, (4) vysvětlení pouze skutečně neobvyklých dnešních pohybů sledovaných trhů a (5) kvalitní českou kulturní nebo historickou poznámku vztahující se k datu. Sledované nástroje a témata jsou SPYI, SPYL, SEC0, XNAS, QUTM, EGLN/XAU, XAIX, IWMO, ZPRV, NVS, NW0/CSG, ASME/ASML, BTC a ADA. Vše věrně přelož nebo shrň do češtiny; nic nevymýšlej. Každá položka musí mít přímý webový zdroj. Pokud některou část nenajdeš, neověříš nebo není relevantní, vrať null či prázdné pole.
 Schéma: {{"meals":[{{"meal":"Breakfast|Lunch|Snack|Dinner","name":"...","recipe":"úplný recept s množstvím a časy","source_title":"...","source_url":"https://..."}}]|null,"longevity_tip":{{"text":"...","author":"organizace nebo autor","work":"název stránky","url":"https://..."}}|null,"portfolio_events":[{{"title":"...","text":"...","url":"https://..."}}],"market_explanations":[{{"title":"...","text":"...","url":"https://..."}}],"cultural_note":{{"text":"...","author":"instituce nebo autor","work":"název stránky","url":"https://..."}}|null}}. Pole meal musí být v pořadí Breakfast, Lunch, Snack, Dinner.'''
     reflection, reflection_status = generate_with_retries("reflection", reflection_prompt, api_key, model, max_completion_tokens=1000)
+    time.sleep(GROQ_REQUEST_SPACING)
     extras, extras_status = generate_with_retries("extras", extras_prompt, api_key, model, max_completion_tokens=3200)
     content = validate_daily_content({**extras, **reflection})
     reflection_status["quote"] = "present" if content.get("quote") else "omitted"
