@@ -117,7 +117,7 @@ class MergeTests(unittest.TestCase):
     @patch.object(merger, "request_groq_json")
     def test_retries_failed_groq_request_and_reports_error(self, request, _sleep):
         request.side_effect = OSError("temporary outage")
-        content, status = merger.generate_with_retries("reflection", "prompt", "key", "model")
+        content, status = merger.generate_with_retries("reflection", "prompt", "key", "model", 1000)
         self.assertEqual(content, {})
         self.assertEqual(request.call_count, 3)
         self.assertEqual(status["status"], "error")
@@ -130,12 +130,18 @@ class MergeTests(unittest.TestCase):
         error = urllib.error.HTTPError("https://api.groq.test", 429, "Too Many Requests", headers, None)
         self.assertEqual(merger.retry_delay(error, 1), 17)
 
+    def test_rate_limit_retry_uses_decimal_delay_from_error_body(self):
+        body = BytesIO(b'{"error":{"message":"Please try again in 9.516s."}}')
+        error = urllib.error.HTTPError("https://api.groq.test", 429, "Too Many Requests", {}, body)
+        merger.groq_error_reason(error)
+        self.assertAlmostEqual(merger.retry_delay(error, 1), 10.016)
+
     @patch.object(merger.time, "sleep")
     @patch.object(merger, "request_groq_json")
     def test_payload_too_large_is_not_retried(self, request, sleep):
         body = BytesIO(b'{"error":{"message":"Request too large after tool use"}}')
         request.side_effect = urllib.error.HTTPError("https://api.groq.test", 413, "Payload Too Large", {}, body)
-        content, status = merger.generate_with_retries("reflection", "prompt", "key", "model")
+        content, status = merger.generate_with_retries("reflection", "prompt", "key", "model", 1000)
         self.assertEqual(content, {})
         self.assertEqual(request.call_count, 1)
         sleep.assert_not_called()
@@ -146,9 +152,10 @@ class MergeTests(unittest.TestCase):
     def test_compound_request_uses_search_without_visiting_pages(self, urlopen):
         response = urlopen.return_value.__enter__.return_value
         response.read.return_value = b'{"choices":[{"message":{"content":"{}"}}]}'
-        merger.request_groq_json("prompt", "key", "groq/compound")
+        merger.request_groq_json("prompt", "key", "groq/compound", 1234)
         payload = json.loads(urlopen.call_args.args[0].data)
         self.assertEqual(payload["compound_custom"]["tools"]["enabled_tools"], ["web_search"])
+        self.assertEqual(payload["max_completion_tokens"], 1234)
 
     @patch.object(merger, "generate_with_retries")
     def test_reflection_survives_failure_in_other_daily_content(self, generate):
