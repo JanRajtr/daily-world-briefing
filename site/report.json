@@ -1,15 +1,15 @@
 {
   "date": "2026-08-07",
-  "generated_at": "2026-08-07T08:44:06Z",
+  "generated_at": "2026-08-07T08:49:32Z",
   "market": {
     "date": "2026-08-07",
     "score": 22.01866854190615,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-07T08:43:55Z"
+    "generated_at": "2026-08-07T08:49:21Z"
   },
   "news": {
     "date": "2026-08-07",
-    "generated_at": "2026-08-07T08:44:06Z",
+    "generated_at": "2026-08-07T08:49:32Z",
     "ai_used": true,
     "model": "llama-3.3-70b-versatile",
     "selected_items": 6,
@@ -19,15 +19,15 @@
     "model": "groq/compound",
     "reflection": {
       "status": "error",
-      "attempts": 3,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests",
+      "attempts": 1,
+      "reason": "HTTPError: HTTP Error 413: Payload Too Large: Request Entity Too Large",
       "quote": "omitted",
       "buddhist_teaching": "omitted"
     },
     "extras": {
       "status": "error",
       "attempts": 3,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests"
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 23527, Requested 9351. Please try again in 5.755999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing"
     }
   }
 }
