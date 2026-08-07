@@ -149,6 +149,18 @@ class MergeTests(unittest.TestCase):
 
     @patch.object(merger.time, "sleep")
     @patch.object(merger, "request_groq_json")
+    def test_daily_token_limit_is_not_retried(self, request, sleep):
+        body = BytesIO(b'{"error":{"message":"Rate limit reached on tokens per day (TPD). Please try again in 20m33.4464s."}}')
+        request.side_effect = urllib.error.HTTPError("https://api.groq.test", 429, "Too Many Requests", {}, body)
+        content, status = merger.generate_with_retries("extras", "prompt", "key", "model", 3200)
+        self.assertEqual(content, {})
+        self.assertEqual(request.call_count, 1)
+        sleep.assert_not_called()
+        self.assertEqual(status["rate_limit"], "TPD")
+        self.assertAlmostEqual(status["retry_after_seconds"], 1233.4464)
+
+    @patch.object(merger.time, "sleep")
+    @patch.object(merger, "request_groq_json")
     def test_payload_too_large_is_not_retried(self, request, sleep):
         body = BytesIO(b'{"error":{"message":"Request too large after tool use"}}')
         request.side_effect = urllib.error.HTTPError("https://api.groq.test", 413, "Payload Too Large", {}, body)

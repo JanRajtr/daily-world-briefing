@@ -194,10 +194,10 @@ def groq_duration_seconds(value: str | None) -> float:
     """Parse Groq reset durations such as 7.66s or 2m59.56s."""
     if not value:
         return 0
-    match = re.fullmatch(r"\s*(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?\s*", value)
+    match = re.fullmatch(r"\s*(?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?\s*", value)
     if not match or not any(match.groups()):
         return 0
-    return float(match.group(1) or 0) * 60 + float(match.group(2) or 0)
+    return float(match.group(1) or 0) * 3600 + float(match.group(2) or 0) * 60 + float(match.group(3) or 0)
 
 
 def retry_delay(error: BaseException, attempt: int, maximum: float = 120.0) -> float:
@@ -233,6 +233,8 @@ def retry_delay(error: BaseException, attempt: int, maximum: float = 120.0) -> f
 def retryable_groq_error(error: BaseException) -> bool:
     if not isinstance(error, urllib.error.HTTPError):
         return isinstance(error, (OSError, TimeoutError))
+    if getattr(error, "groq_limit_kind", "") == "TPD":
+        return False
     return error.code in (408, 429, 498) or 500 <= error.code < 600
 
 
@@ -246,9 +248,12 @@ def groq_error_reason(error: BaseException) -> str:
         detail = value.get("error", {}).get("message", "") if isinstance(value, dict) else ""
         if detail:
             safe_detail = re.sub(r"\s+", " ", str(detail)).strip()[:500]
-            retry_match = re.search(r"try again in ([0-9]+(?:\.[0-9]+)?)s", safe_detail, re.IGNORECASE)
+            limit_match = re.search(r"tokens per (minute|day) \((TPM|TPD)\)", safe_detail, re.IGNORECASE)
+            if limit_match:
+                error.groq_limit_kind = limit_match.group(2).upper()
+            retry_match = re.search(r"try again in ((?:\d+(?:\.\d+)?[hms])+)", safe_detail, re.IGNORECASE)
             if retry_match:
-                error.groq_retry_after = float(retry_match.group(1))
+                error.groq_retry_after = groq_duration_seconds(retry_match.group(1).lower())
             return f"{reason}: {safe_detail}"
     except (OSError, TypeError, ValueError, json.JSONDecodeError):
         pass
@@ -267,7 +272,12 @@ def generate_with_retries(label: str, prompt: str, api_key: str, model: str, max
             last_error = groq_error_reason(error)
             print(f"Groq {label} attempt {attempt}/{attempts} failed: {last_error}", file=sys.stderr)
             if not retryable_groq_error(error):
-                return {}, {"status": "error", "attempts": attempt, "reason": last_error, "max_completion_tokens": max_completion_tokens}
+                status = {"status": "error", "attempts": attempt, "reason": last_error, "max_completion_tokens": max_completion_tokens}
+                if getattr(error, "groq_limit_kind", ""):
+                    status["rate_limit"] = error.groq_limit_kind
+                if getattr(error, "groq_retry_after", 0):
+                    status["retry_after_seconds"] = error.groq_retry_after
+                return {}, status
             if attempt < attempts:
                 delay = retry_delay(error, attempt)
                 print(f"Groq {label} retrying in {delay:g} seconds", file=sys.stderr)
