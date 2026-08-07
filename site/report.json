@@ -1,32 +1,32 @@
 {
   "date": "2026-08-07",
-  "generated_at": "2026-08-07T07:18:14Z",
+  "generated_at": "2026-08-07T08:30:37Z",
   "market": {
     "date": "2026-08-07",
     "score": 22.01866854190615,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-07T07:18:11Z"
+    "generated_at": "2026-08-07T08:30:33Z"
   },
   "news": {
     "date": "2026-08-07",
-    "generated_at": "2026-08-07T07:18:14Z",
-    "ai_used": false,
-    "model": null,
-    "selected_items": 0,
+    "generated_at": "2026-08-07T08:30:37Z",
+    "ai_used": true,
+    "model": "llama-3.3-70b-versatile",
+    "selected_items": 1,
     "feed_failures": 0
   },
   "daily_content": {
     "model": "groq/compound",
     "reflection": {
       "status": "error",
-      "attempts": 2,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests",
+      "attempts": 3,
+      "reason": "HTTPError: HTTP Error 413: Payload Too Large",
       "quote": "omitted",
       "buddhist_teaching": "omitted"
     },
     "extras": {
       "status": "error",
-      "attempts": 2,
+      "attempts": 3,
       "reason": "HTTPError: HTTP Error 429: Too Many Requests"
     }
   }
