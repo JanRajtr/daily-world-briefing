@@ -1,0 +1,16 @@
+{
+  "cs-buddhist": {
+    "language": "cs",
+    "language_name": "čeština",
+    "tradition": "buddhism",
+    "output_path": "",
+    "title": "Denní přehled trhů a zdravého života"
+  },
+  "id-islamic": {
+    "language": "id",
+    "language_name": "Bahasa Indonesia",
+    "tradition": "islam",
+    "output_path": "id",
+    "title": "Ringkasan harian pasar dan hidup sehat"
+  }
+}

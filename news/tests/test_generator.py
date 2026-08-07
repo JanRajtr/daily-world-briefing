@@ -139,6 +139,17 @@ class GeneratorTests(unittest.TestCase):
         self.assertNotIn("x" * 401, prompt)
         self.assertIn("x" * 400, prompt)
 
+    def test_indonesian_profile_controls_news_language(self):
+        item = generator.Item("known", "Title", "https://example.test", "2026-08-04", "Source", "world", "independent-news", "Global", summary="Sourced text")
+        profile = generator.load_profile("id-islamic")
+        prompt = generator.ai_prompt([item], date(2026, 8, 5), profile)
+        self.assertIn("Bahasa Indonesia", prompt)
+        briefing = {"overview": ["Ringkasan"], "sections": {section: [] for section in generator.SECTIONS}}
+        page = generator.render_report(date(2026, 8, 5), briefing, [item], [], "2026-08-05T06:00:00Z", False, profile)
+        self.assertIn('lang="id"', page)
+        self.assertIn("Metode editorial", page)
+        self.assertEqual(generator.fallback_briefing([item], profile)["overview"], [])
+
     def test_default_editorial_selection_is_bounded(self):
         items = []
         for section, count in (("czech_eu", 20), ("world", 20), ("economy", 20), ("science", 20)):

@@ -2,6 +2,10 @@
 
 Plně automatizovaný český přehled. GitHub Actions počítá transparentní skóre tržního rizika a seznam nástrojů v EUR, sbírá důvěryhodné veřejné ekonomické zdroje a přidává místní počasí, jídelníček a tip pro zdravé stárnutí. Groq slouží především k věrnému překladu a zkrácení dodaného zdrojového obsahu, nikoli k vymýšlení faktů.
 
+Jeden společný generátor nyní vytváří dva profily definované v `config/profiles.json`: `cs-buddhist` v češtině s ověřeným buddhistickým učením a `id-islamic` v Bahasa Indonesia s ověřeným islámským učením. Česká verze zůstává na `/index.html`, indonéská je na `/id/index.html` a obě stránky na sebe odkazují. Jazyk ani tradice nemají vlastní kopii generátoru; všem třem krokům se předává pouze `--profile`.
+
+Islámská položka smí projít pouze s přímým odkazem na Korán (oficiální překlad Kementerian Agama RI nebo Quran.com) či ověřitelný hadís v Sunnah.com. Prompt vyžaduje súru a verš nebo sbírku a číslo hadísu. Neověřená položka se vynechá a žádný náhradní náboženský text není uložen v repozitáři.
+
 Praktická ranní část může dále obsahovat český svátek a státní svátek, kurzovní lístek ČNB, kvalitu ovzduší a významný pyl, UV či jiné mimořádné počasí, události relevantní pro portfolio, zdrojové vysvětlení neobvyklých tržních pohybů a českou kulturní nebo historickou stopu dne. Každá síťová část se při nedostupnosti jednoduše vynechá.
 
 Před zprávami může být dnešní nejnižší nalezená cena business-class zpáteční letenky Praha–Jakarta pro léto 2027. SerpApi porovná v Google Flights deset týdenních termínů odletu od 1. června do 1. srpna, vždy s návratem přesně po 30 dnech (takže oba lety spadají do června až srpna) a s nejvýše jedním přestupem. Report ukáže pouze skutečný výsledek API v CZK, aerolinku, termíny a odkaz; při chybě nebo chybějícím klíči sekci vynechá. Jde o nejnižší cenu mezi transparentně uvedenými vzorkovanými termíny, nikoli garanci pro každý jednotlivý den léta.
@@ -15,6 +19,7 @@ Rešerše citátu a buddhistického učení běží odděleně od ostatního den
 ## What it produces
 
 - `https://YOUR-USER.github.io/YOUR-REPO/index.html` — the current report, replaced on every run
+- `https://YOUR-USER.github.io/YOUR-REPO/id/index.html` — stejný přehled v Bahasa Indonesia s islámskou duchovní částí
 - `.../report.json` — metadata for the current report
 - a composite 0–100 score based on VIX, S&P 500 drawdown and realized volatility, high-yield spreads, financial conditions, the 10Y–2Y curve, unemployment momentum, CPI inflation and a Brent oil shock
 - a market watchlist showing each instrument's EUR price, one-day and one-month moves, distance from its trailing 252-session high, and position versus its 50-day average
@@ -32,7 +37,7 @@ The HTML uses a single semantic `<article>`, real headings and lists, no JavaScr
    - `SERPAPI_API_KEY` — klíč SerpApi pro aktuální porovnání business-class letenek v Google Flights. Bez něj se letenková sekce bezpečně vynechá.
    - `INSTAPAPER_USERNAME` — the Instapaper email address or username.
    - `INSTAPAPER_PASSWORD` — the account password. If the account has no password, save an empty value if GitHub permits it; otherwise use any placeholder value, which the Simple API documentation says is accepted for passwordless accounts.
-   - Optional second account: `INSTAPAPER_USERNAME_SECONDARY` and `INSTAPAPER_PASSWORD_SECONDARY`. When the secondary username is absent, delivery to the primary account continues normally.
+   - Optional second account: `INSTAPAPER_USERNAME_SECONDARY` and `INSTAPAPER_PASSWORD_SECONDARY`. Tento účet dostává výhradně indonéský report `/id/index.html`; primární účet nadále dostává pouze český `/index.html`. Když sekundární účet není nastaven, indonéská verze se publikuje na Pages, ale do Instapaperu se neposílá.
 5. Open **Actions → Daily World Briefing → Run workflow**. Leave the date blank and `Send the published URL to Instapaper` off for the first test.
 6. When the run is green, open the deployment URL shown in the `deploy` job and verify the article.
 7. Run it once more with `Send the published URL to Instapaper` enabled. Confirm that the article appears in Instapaper and then sync the Instapaper integration on Kobo.
@@ -49,7 +54,7 @@ The scheduled run is every day at **06:15 UTC** (07:15 in Prague winter time, 08
 6. Deploys only `site/` through the official GitHub Pages actions.
 7. Waits until the dated page is reachable, then calls `https://www.instapaper.com/api/add` over HTTPS using HTTP Basic Auth. HTTP 201 is required.
 
-Scheduled runs always notify the primary Instapaper account and the optional secondary account when configured. Manual runs do the same only when the workflow input is enabled. Instapaper receives a run-specific query parameter so a manual rerun fetches the newly generated page instead of reusing a cached copy.
+Scheduled runs send the Czech root report to the primary Instapaper account and, when configured, the separate Bahasa Indonesia report to the secondary account. Manual runs do the same only when the workflow input is enabled. Instapaper receives a run-specific query parameter so a manual rerun fetches the newly generated page instead of reusing a cached copy.
 
 ## Methodology
 

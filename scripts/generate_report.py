@@ -20,6 +20,9 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+sys.path.insert(0, str(Path(__file__).parent))
+from profiles import DEFAULT_PROFILE, load_profile
+
 FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={}"
 USER_AGENT = "daily-world-briefing/1.0 (GitHub Actions; public-data reader)"
 YAHOO_CHART = "https://query2.finance.yahoo.com/v8/finance/chart/{}"
@@ -222,7 +225,13 @@ def gold_summary(gold_rows, fx_rows):
     return stock_summary(instrument, shared, "EUR")
 
 
-def risk_label(score):
+def risk_label(score, language="cs"):
+    if language == "id":
+        if score < 25: return "Rendah", "low"
+        if score < 45: return "Waspada", "guarded"
+        if score < 65: return "Meningkat", "elevated"
+        if score < 80: return "Tinggi", "high"
+        return "Kritis", "severe"
     if score < 25:
         return "Nízké", "low"
     if score < 45:
@@ -239,7 +248,20 @@ def fmt(value, unit):
     return f"{value:+.2f}{suffix}" if value < 0 or unit == " pp" else f"{value:.2f}{suffix}"
 
 
-def render_market_situation(stocks):
+def render_market_situation(stocks, language="cs"):
+    if language == "id":
+        if not stocks:
+            return "<h2>Situasi pasar</h2><p>Data instrumen yang dipantau tidak tersedia.</p>"
+        total = len(stocks)
+        day_up = sum(r["day"] > 0 for r in stocks); day_down = sum(r["day"] < 0 for r in stocks)
+        month_up = sum(r["month"] > 0 for r in stocks); month_down = sum(r["month"] < 0 for r in stocks)
+        above = sum(r["trend"].startswith("Nad") for r in stocks)
+        best = max(stocks, key=lambda r: r["month"]); worst = min(stocks, key=lambda r: r["month"])
+        return ("<h2>Situasi pasar</h2><p>"
+                f"Dalam sehari, {day_up} dari {total} instrumen naik dan {day_down} turun; median perubahan {statistics.median(r['day'] for r in stocks):+.1f}%. "
+                f"Dalam sebulan, {month_up} instrumen naik dan {month_down} turun; median perubahan {statistics.median(r['month'] for r in stocks):+.1f}%. "
+                f"Sebanyak {above} dari {total} berada di atas rata-rata 50 hari; median berjarak {statistics.median(r['from_high'] for r in stocks):+.1f}% dari tertinggi 52 minggu. "
+                f"Terkuat sebulan: {html.escape(best['label'])} ({best['month']:+.1f}%). Terlemah: {html.escape(worst['label'])} ({worst['month']:+.1f}%).</p>")
     if not stocks:
         return "<h2>Situace na trzích</h2><p>Data sledovaných nástrojů nejsou dostupná.</p>"
     total = len(stocks)
@@ -263,10 +285,12 @@ def render_market_situation(stocks):
     )
 
 
-def render_report(report_date, results, failures, generated_at, stocks=(), stock_failures=()):
+def render_report(report_date, results, failures, generated_at, stocks=(), stock_failures=(), profile=None):
+    profile = profile or load_profile()
+    language = profile["language"]
     total_weight = sum(r["weight"] for r in results)
     score = sum(r["score"] * r["weight"] for r in results) / total_weight
-    label, _ = risk_label(score)
+    label, _ = risk_label(score, language)
     sorted_risk = sorted(results, key=lambda r: r["score"], reverse=True)
     drivers = sorted_risk[:3]
     positives = sorted(results, key=lambda r: r["score"])[:2]
@@ -288,7 +312,7 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
         f'Od 52týdenního maxima: {r["from_high"]:+.1f} %. {html.escape(r["trend"])}</li>'
         for r in stocks
     )
-    market_situation = render_market_situation(stocks)
+    market_situation = render_market_situation(stocks, language)
     stock_section = "<h2>Sledované tržní nástroje</h2>"
     if stock_items:
         stock_section += f'<ul>{stock_items}</ul>'
@@ -303,6 +327,24 @@ def render_report(report_date, results, failures, generated_at, stocks=(), stock
         + ")</li>"
         for r in results
     )
+    if language == "id":
+        names = {"vix": "VIX", "drawdown": "Penurunan S&P 500", "volatility": "Volatilitas terealisasi S&P 500", "hy_oas": "Spread obligasi berimbal hasil tinggi AS", "nfci": "NFCI Chicago Fed", "curve": "Kurva imbal hasil AS 10T–2T", "unemployment": "Perubahan pengangguran", "inflation": "Inflasi CPI AS", "oil": "Guncangan minyak Brent"}
+        notes = {"vix": "Volatilitas tersirat saham", "drawdown": "Dari tertinggi 252 sesi", "volatility": "Volatilitas tahunan 30 sesi", "hy_oas": "Spread disesuaikan opsi", "nfci": "Di atas nol berarti kondisi lebih ketat", "curve": "Inversi meningkatkan risiko siklus", "unemployment": "Perubahan tiga observasi bulanan", "inflation": "Tahun ke tahun", "oil": "Perubahan harga absolut 20 observasi"}
+        metric_items = "".join(f'<li><strong>{html.escape(names.get(r["key"], r["name"]))}.</strong> Nilai terakhir: {fmt(r["value"], r["unit"])}. Risiko: {r["score"]:.0f}/100. Per {r["as_of"]}.</li>' for r in results)
+        driver_items = "".join(f'<li><strong>{html.escape(names.get(r["key"], r["name"]))}</strong>: {r["score"]:.0f}/100 — {html.escape(notes.get(r["key"], r["note"]))}</li>' for r in drivers)
+        positive_items = "".join(f'<li><strong>{html.escape(names.get(r["key"], r["name"]))}</strong>: {r["score"]:.0f}/100</li>' for r in positives)
+        stock_items = "".join(f'<li><strong>{html.escape(r["label"])} — {html.escape(r["name"])}</strong><br>Harga: €{r["price"]:,.2f}. Sehari: {r["day"]:+.1f}%. Sebulan: {r["month"]:+.1f}%. Dari tertinggi 52 minggu: {r["from_high"]:+.1f}%. {"Di atas" if r["trend"].startswith("Nad") else "Di bawah"} rata-rata 50 hari.</li>' for r in stocks)
+        warning = ('<p><strong>Data tidak lengkap:</strong> ' + html.escape("; ".join(failures)) + "</p>") if failures else ""
+        stock_warning = ('<p><strong>Data instrumen tidak tersedia:</strong> ' + html.escape("; ".join(stock_failures)) + "</p>") if stock_failures else ""
+        return f'''<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Risiko pasar — {report_date}</title></head><body><article>
+{market_situation}<p><strong>Risiko gabungan: {score:.0f}/100 — {label}.</strong> Perhitungan tertimbang dari {len(results)} indikator pasar dan makroekonomi publik. Nilai lebih tinggi menunjukkan kondisi yang lebih defensif.</p>
+<h2>Instrumen pasar yang dipantau</h2>{f'<ul>{stock_items}</ul>' if stock_items else ''}{stock_warning}{warning}
+<h2>Pendorong risiko utama</h2><ol>{driver_items}</ol><h2>Penstabil relatif</h2><ul>{positive_items}</ul>
+<h2>Ikhtisar indikator</h2><ul>{metric_items}</ul>
+<h2>Cara membaca hasil</h2><p>Ini adalah sinyal pemantauan mekanis, bukan prakiraan atau rekomendasi investasi. Skor memakai ambang tetap dan bobot disesuaikan menurut data yang tersedia.</p>
+<h2>Sumber</h2><ul>{source_items}</ul><p>Dibuat {generated_at} UTC. Indikator risiko berasal dari FRED dan harga instrumen dari Yahoo Finance. Metodologi dijelaskan dalam README repositori.</p>
+<p><strong>Tanggal laporan:</strong> {report_date}. Observasi risiko mencakup {oldest} hingga {freshest}.</p></article></body></html>''', score, label
     return f'''<!doctype html>
 <html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Tržní riziko — {report_date}</title><meta name="description" content="Pravidlová složka tržního rizika pro denní přehled {report_date}.">
@@ -326,7 +368,9 @@ def main():
     parser.add_argument("--date", default=date.today().isoformat(), help="Report date (YYYY-MM-DD)")
     parser.add_argument("--output", default="site", help="Static-site output directory")
     parser.add_argument("--fixture", help="Optional JSON fixture for offline tests")
+    parser.add_argument("--profile", default=DEFAULT_PROFILE)
     args = parser.parse_args()
+    profile = load_profile(args.profile)
     report_date = date.fromisoformat(args.date)
     if report_date > date.today():
         raise SystemExit(f"Report date {report_date} is in the future; refusing to publish.")
@@ -388,9 +432,9 @@ def main():
         raise SystemExit("Too few indicators were available (less than 50% of configured weight); refusing to publish.")
 
     generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    page, score, label = render_report(report_date.isoformat(), results, failures, generated_at, stocks, stock_failures)
+    page, score, label = render_report(report_date.isoformat(), results, failures, generated_at, stocks, stock_failures, profile)
     report_path.write_text(page, encoding="utf-8")
-    meta_path.write_text(json.dumps({"date": report_date.isoformat(), "score": score, "label": label, "generated_at": generated_at}, indent=2) + "\n")
+    meta_path.write_text(json.dumps({"date": report_date.isoformat(), "score": score, "label": label, "generated_at": generated_at, "profile": profile["name"]}, indent=2) + "\n")
     print(f"Generated {report_path} with score {score:.1f} ({label})")
 
 

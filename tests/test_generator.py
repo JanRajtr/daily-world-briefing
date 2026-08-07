@@ -23,6 +23,15 @@ class GeneratorTests(unittest.TestCase):
         self.assertEqual(generator.risk_label(24.9)[0], "Nízké")
         self.assertEqual(generator.risk_label(25)[0], "Obezřetné")
         self.assertEqual(generator.risk_label(80)[0], "Kritické")
+        self.assertEqual(generator.risk_label(80, "id")[0], "Kritis")
+
+    def test_indonesian_profile_localizes_market_report(self):
+        profile = generator.load_profile("id-islamic")
+        result = {"key": "vix", "name": "VIX", "value": 20, "unit": "", "score": 40, "weight": 18, "as_of": "2026-08-07", "note": "Volatility", "source_label": "CBOE", "series": ("VIXCLS",)}
+        page, _, _ = generator.render_report("2026-08-07", [result], [], "2026-08-07T06:00:00Z", profile=profile)
+        self.assertIn('lang="id"', page)
+        self.assertIn("Situasi pasar", page)
+        self.assertIn("Cara membaca hasil", page)
 
     def test_curve_uses_latest_shared_date(self):
         data = {

@@ -19,6 +19,9 @@ from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from profiles import DEFAULT_PROFILE, load_profile
+
 WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
 AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 CALENDAR_URL = "https://svatkyapi.netlify.app/api/day"
@@ -99,7 +102,7 @@ def fetch_summer_flight_price(api_key: str) -> tuple[dict | None, dict]:
     return cheapest, status
 
 
-def flight_price_section(flight: dict | None) -> str:
+def flight_price_section(flight: dict | None, language="cs") -> str:
     if not flight:
         return ""
     price = f'{int(flight["price_czk"]):,}'.replace(",", " ")
@@ -111,6 +114,11 @@ def flight_price_section(flight: dict | None) -> str:
         duration = f"; cesta tam {hours} h {minutes} min"
     link = html.escape(str(flight.get("url", "")), quote=True)
     source = f'<a href="{link}">Google Flights</a>' if link.startswith("http") else "Google Flights"
+    if language == "id":
+        stops = "tanpa transit" if flight.get("outbound_stops") == 0 else "1 kali transit"
+        return ('<h2>Harga tiket pulang-pergi Praha–Jakarta hari ini</h2>'
+                f'<p><strong>{price} CZK</strong> untuk satu orang di kelas bisnis. Berangkat {html.escape(flight["outbound_date"])}, kembali {html.escape(flight["return_date"])}; {html.escape(airlines)}, {stops}{duration}.</p>'
+                f'<p><small>Harga terendah yang ditemukan saat ini dari {flight["sampled_date_pairs"]} tanggal keberangkatan mingguan pada musim panas 2027, selalu kembali setelah 30 hari dan maksimal satu kali transit. Sumber: {source}; diperiksa {html.escape(flight["checked_at"])}. Harga dan ketersediaan dapat berubah sebelum pemesanan.</small></p>')
     return (
         '<h2>Dnešní cena zpáteční letenky Praha–Jakarta</h2>'
         f'<p><strong>{price} Kč</strong> za jednu osobu v business class. '
@@ -129,8 +137,10 @@ def sourced_item(value: object) -> dict | None:
     return clean if all(clean.values()) and clean["url"].startswith(("https://", "http://")) else None
 
 
-def daily_reflection(content: dict) -> str:
-    items = [item for item in (sourced_item(content.get("quote")), sourced_item(content.get("buddhist_teaching"))) if item]
+def daily_reflection(content: dict, profile=None) -> str:
+    profile = profile or load_profile()
+    teaching = content.get("spiritual_teaching") or content.get("buddhist_teaching")
+    items = [item for item in (sourced_item(content.get("quote")), sourced_item(teaching)) if item]
     if not items:
         return ""
     blocks = "".join(
@@ -138,6 +148,8 @@ def daily_reflection(content: dict) -> str:
         f'<a href="{html.escape(item["url"], quote=True)}">{html.escape(item["work"])}</a></p></blockquote>'
         for item in items
     )
+    if profile["language"] == "id":
+        return f'<h2>Renungan hari ini</h2>{blocks}<p><small>Terjemahan Bahasa Indonesia; tautan menuju sumber web yang digunakan.</small></p>'
     return f'<h2>Myšlenka dne</h2>{blocks}<p><small>Český překlad; odkazy vedou na použité webové zdroje.</small></p>'
 
 
@@ -146,6 +158,14 @@ def article_body(page: str) -> str:
     if not match:
         raise ValueError("input page has no <article> element")
     return match.group(1).strip()
+
+
+def demote_headings(fragment: str, levels: int = 1) -> str:
+    """Move component headings down without cascading replacements."""
+    def replace(match: re.Match) -> str:
+        level = min(6, int(match.group(2)) + levels)
+        return f"<{match.group(1)}h{level}{match.group(3)}>"
+    return re.sub(r"<(\/?)h([1-6])([^>]*)>", replace, fragment, flags=re.IGNORECASE)
 
 
 def fetch_weather_location(name: str, latitude: float, longitude: float, report_date: str) -> dict:
@@ -224,13 +244,18 @@ def fetch_air_quality() -> list[dict]:
     return sorted(results, key=lambda item: order[item["name"]])
 
 
-def validate_daily_content(content: dict) -> dict:
+def validate_daily_content(content: dict, profile=None) -> dict:
+    profile = profile or load_profile()
     if not isinstance(content, dict):
         raise ValueError("daily content is not an object")
     clean = {}
-    for key in ("quote", "buddhist_teaching"):
+    for key in ("quote", "buddhist_teaching", "spiritual_teaching"):
         item = sourced_item(content.get(key))
         if item:
+            if key == "spiritual_teaching" and profile["tradition"] == "islam":
+                host = urllib.parse.urlparse(item["url"]).hostname or ""
+                if host not in ("quran.kemenag.go.id", "quran.com", "www.sunnah.com", "sunnah.com"):
+                    continue
             clean[key] = item
     tip = sourced_item(content.get("longevity_tip"))
     if tip:
@@ -267,7 +292,7 @@ def validate_daily_content(content: dict) -> dict:
 
 
 def request_groq_json(prompt: str, api_key: str, model: str, max_completion_tokens: int) -> tuple[dict, dict]:
-    payload = json.dumps({"model": model, "temperature": 0, "max_completion_tokens": max_completion_tokens, "response_format": {"type": "json_object"}, "compound_custom": {"tools": {"enabled_tools": ["web_search"]}}, "messages": [{"role": "system", "content": "Jsi přesný český rešeršér a překladatel. Bez dohledatelného webového zdroje obsah vynecháš."}, {"role": "user", "content": prompt}]}).encode()
+    payload = json.dumps({"model": model, "temperature": 0, "max_completion_tokens": max_completion_tokens, "response_format": {"type": "json_object"}, "compound_custom": {"tools": {"enabled_tools": ["web_search"]}}, "messages": [{"role": "system", "content": "You are an exact researcher and translator. Follow the requested output language and omit anything without a verifiable direct web source."}, {"role": "user", "content": prompt}]}).encode()
     request = urllib.request.Request(GROQ_URL, data=payload, method="POST", headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "daily-world-briefing/1.0"})
     with urllib.request.urlopen(request, timeout=90) as response:
         result = json.loads(response.read())
@@ -386,27 +411,67 @@ def generate_with_retries(label: str, prompt: str, api_key: str, model: str, max
     return {}, {"status": "error", "attempts": attempts, "reason": last_error, "max_completion_tokens": max_completion_tokens}
 
 
-def generate_daily_content(report_date: str, api_key: str, model: str, reflection_model: str = "groq/compound-mini") -> tuple[dict, dict]:
-    reflection_prompt = f'''Pro den {report_date} použij webové vyhledávání a vrať pouze platný JSON. Najdi (1) ověřitelný historický citát a (2) skutečné, konkrétní učení buddhistického učitele nebo badatele. Vše věrně přelož nebo shrň do češtiny; nic nevymýšlej. Každá položka musí mít autora, dílo nebo kontext a přímý webový zdroj. Pokud položku neověříš, vrať null.
-Schéma: {{"quote":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null,"buddhist_teaching":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null}}.'''
+def generate_daily_content(report_date: str, api_key: str, model: str, reflection_model: str = "groq/compound-mini", profile=None) -> tuple[dict, dict]:
+    profile = profile or load_profile()
+    if profile["tradition"] == "islam":
+        reflection_prompt = f'''Untuk {report_date}, gunakan pencarian web dan kembalikan hanya JSON valid. Temukan (1) kutipan sejarah yang dapat diverifikasi dan (2) ajaran Islam yang konkret dan dapat diverifikasi dalam Bahasa Indonesia. Untuk ajaran Islam, utamakan ayat Al-Qur'an dengan rujukan surah/ayat dan terjemahan resmi Kementerian Agama RI, atau hadis sahih dengan koleksi dan nomor yang jelas. Jangan menciptakan atau memparafrasekan seolah-olah itu wahyu. Setiap item wajib memiliki teks, author, work, dan URL sumber langsung; jika tidak dapat diverifikasi, gunakan null. Skema: {{"quote":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null,"spiritual_teaching":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null}}.'''
+    else:
+        reflection_prompt = f'''Pro den {report_date} použij webové vyhledávání a vrať pouze platný JSON. Najdi (1) ověřitelný historický citát a (2) skutečné, konkrétní učení buddhistického učitele nebo badatele. Vše věrně přelož nebo shrň do češtiny; nic nevymýšlej. Každá položka musí mít autora, dílo nebo kontext a přímý webový zdroj. Pokud položku neověříš, vrať null. Schéma: {{"quote":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null,"spiritual_teaching":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null}}.'''
     extras_prompt = f'''Pro den {report_date} použij webové vyhledávání a vrať pouze platný JSON. Najdi: (1) čtyři zdravé recepty pro jednoho dospělého dostupné v Česku, (2) praktické doporučení pro zdravé stárnutí z autoritativního zdravotnického zdroje, (3) dnešní či bezprostředně nadcházející události relevantní pro portfolio a makroekonomiku, (4) vysvětlení pouze skutečně neobvyklých dnešních pohybů sledovaných trhů a (5) kvalitní českou kulturní nebo historickou poznámku vztahující se k datu. Sledované nástroje a témata jsou SPYI, SPYL, SEC0, XNAS, QUTM, EGLN/XAU, XAIX, IWMO, ZPRV, NVS, NW0/CSG, ASME/ASML, BTC a ADA. Vše věrně přelož nebo shrň do češtiny; nic nevymýšlej. Každá položka musí mít přímý webový zdroj. Pokud některou část nenajdeš, neověříš nebo není relevantní, vrať null či prázdné pole.
 Schéma: {{"meals":[{{"meal":"Breakfast|Lunch|Snack|Dinner","name":"...","recipe":"úplný recept s množstvím a časy","source_title":"...","source_url":"https://..."}}]|null,"longevity_tip":{{"text":"...","author":"organizace nebo autor","work":"název stránky","url":"https://..."}}|null,"portfolio_events":[{{"title":"...","text":"...","url":"https://..."}}],"market_explanations":[{{"title":"...","text":"...","url":"https://..."}}],"cultural_note":{{"text":"...","author":"instituce nebo autor","work":"název stránky","url":"https://..."}}|null}}. Pole meal musí být v pořadí Breakfast, Lunch, Snack, Dinner.'''
+    if profile["language"] == "id":
+        extras_prompt = f'''Untuk {report_date}, gunakan pencarian web dan kembalikan hanya JSON valid dalam Bahasa Indonesia. Temukan empat resep sehat untuk satu orang dewasa dengan bahan yang tersedia di Ceko; saran praktis penuaan sehat dari sumber kesehatan berwenang; peristiwa portofolio dan makroekonomi hari ini atau segera; penjelasan hanya untuk pergerakan pasar yang benar-benar luar biasa; serta catatan budaya atau sejarah Ceko yang berkaitan dengan tanggal ini. Jangan menciptakan fakta. Setiap item wajib memiliki URL sumber langsung; gunakan null atau array kosong jika tidak terverifikasi. Instrumen: SPYI, SPYL, SEC0, XNAS, QUTM, EGLN/XAU, XAIX, IWMO, ZPRV, NVS, NW0/CSG, ASME/ASML, BTC, ADA. Skema: {{"meals":[{{"meal":"Breakfast|Lunch|Snack|Dinner","name":"...","recipe":"resep lengkap dengan jumlah dan waktu","source_title":"...","source_url":"https://..."}}]|null,"longevity_tip":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null,"portfolio_events":[{{"title":"...","text":"...","url":"https://..."}}],"market_explanations":[{{"title":"...","text":"...","url":"https://..."}}],"cultural_note":{{"text":"...","author":"...","work":"...","url":"https://..."}}|null}}. Urutan meal wajib Breakfast, Lunch, Snack, Dinner.'''
     reflection, reflection_status = generate_with_retries("reflection", reflection_prompt, api_key, reflection_model, max_completion_tokens=1000)
     spacing = max(GROQ_REQUEST_SPACING, reflection_status.get("reset_tokens_seconds", 0) + 0.5)
     print(f"Groq waiting {spacing:g} seconds before extras", file=sys.stderr)
     time.sleep(spacing)
     extras, extras_status = generate_with_retries("extras", extras_prompt, api_key, model, max_completion_tokens=3200)
-    content = validate_daily_content({**extras, **reflection})
+    content = validate_daily_content({**extras, **reflection}, profile)
     reflection_status["quote"] = "present" if content.get("quote") else "omitted"
-    reflection_status["buddhist_teaching"] = "present" if content.get("buddhist_teaching") else "omitted"
-    if reflection_status["status"] == "ok" and reflection_status["buddhist_teaching"] == "omitted":
-        reflection_status["buddhist_teaching_reason"] = "Groq returned no teaching with text, author, work, and a valid source URL"
+    teaching = content.get("spiritual_teaching") or content.get("buddhist_teaching")
+    reflection_status["spiritual_teaching"] = "present" if teaching else "omitted"
+    if profile["tradition"] == "buddhism":
+        reflection_status["buddhist_teaching"] = reflection_status["spiritual_teaching"]
+    if reflection_status["status"] == "ok" and reflection_status["spiritual_teaching"] == "omitted":
+        reflection_status["spiritual_teaching_reason"] = "Groq returned no teaching with text, author, work, and a valid source URL"
+        if profile["tradition"] == "buddhism":
+            reflection_status["buddhist_teaching_reason"] = reflection_status["spiritual_teaching_reason"]
     reflection_status["model"] = reflection_model
     extras_status["model"] = model
     return content, {"models": {"reflection": reflection_model, "extras": model}, "reflection": reflection_status, "extras": extras_status}
 
 
-def wellbeing_sections(report_date: str, weather: list[dict], content: dict, calendar: dict | None = None, fx: dict | None = None, air_quality: list[dict] | None = None) -> str:
+def wellbeing_sections(report_date: str, weather: list[dict], content: dict, calendar: dict | None = None, fx: dict | None = None, air_quality: list[dict] | None = None, profile=None) -> str:
+    profile = profile or load_profile()
+    if profile["language"] == "id":
+        sections = []
+        weather_id = {"Jasno": "Cerah", "Převážně jasno": "Sebagian besar cerah", "Polojasno": "Berawan sebagian", "Zataženo": "Berawan", "Mlha": "Kabut", "Déšť": "Hujan", "Silný déšť": "Hujan lebat", "Sněžení": "Salju", "Bouřky": "Badai petir", "Smíšené podmínky": "Kondisi campuran"}
+        if calendar and calendar.get("name"):
+            sections.append(f'<h2>Kalender Ceko</h2><p>Hari nama: <strong>{html.escape(str(calendar["name"]))}</strong>' + (f'; besok <strong>{html.escape(str(calendar["tomorrow"]["name"]))}</strong>' if calendar.get("tomorrow", {}).get("name") else "") + '.</p><p><small>Sumber: <a href="https://svatkyapi.cz/">Svatky API</a>.</small></p>')
+        if weather:
+            items = "".join(f'<li><h3>{html.escape(item["name"])}</h3><p>{html.escape(weather_id.get(item["condition"], item["condition"]))}. {item["minimum_c"]}–{item["maximum_c"]} °C. <strong>Hujan:</strong> peluang {item["rain_probability"]}%, jumlah {item.get("rain_mm", 0)} mm. Angin hingga {item["wind_kmh"]} km/jam. Matahari terbit {html.escape(item["sunrise"])}; terbenam {html.escape(item["sunset"])}.</p></li>' for item in weather)
+            sections.append(f'<h2>Cuaca hari ini</h2><ul>{items}</ul><p><small>Sumber: Open-Meteo; zona waktu Europe/Prague.</small></p>')
+        if air_quality:
+            items = "".join(f'<li><strong>{html.escape(item["name"])}</strong>: indeks kualitas udara Eropa {item["aqi"]}, PM2,5 {item["pm25"]:g} µg/m³.</li>' for item in air_quality)
+            sections.append(f'<h2>Udara dan serbuk sari</h2><ul>{items}</ul>')
+        if fx and fx.get("rates"):
+            rates = "; ".join(f'1 {code} = {value:.3f} CZK' for code, value in fx["rates"].items())
+            sections.append(f'<h2>Koruna Ceko</h2><p>{html.escape(rates)}.</p><p><small>Sumber: Bank Nasional Ceko.</small></p>')
+        if content.get("meals"):
+            labels = {"Breakfast": "Sarapan", "Lunch": "Makan siang", "Snack": "Camilan", "Dinner": "Makan malam"}
+            items = "".join(f'<li><h3>{labels[item["meal"]]}: {html.escape(item["name"])}</h3><p>{html.escape(item["recipe"])}</p><p><small>Sumber: <a href="{html.escape(item["source_url"], quote=True)}">{html.escape(item["source_title"])}</a></small></p></li>' for item in content["meals"])
+            sections.append(f'<h2>Menu sehat dan lezat</h2><ol>{items}</ol>')
+        if content.get("longevity_tip"):
+            tip = content["longevity_tip"]
+            sections.append(f'<h2>Tip menua dengan sehat</h2><p>{html.escape(tip["text"])}</p><p><small>Sumber: <a href="{html.escape(tip["url"], quote=True)}">{html.escape(tip["author"])} — {html.escape(tip["work"])}</a>.</small></p>')
+        for key, heading in (("portfolio_events", "Kalender portofolio"), ("market_explanations", "Penjelasan pergerakan luar biasa")):
+            if content.get(key):
+                items = "".join(f'<li><h3>{html.escape(item["title"])}</h3><p>{html.escape(item["text"])}</p><p><small><a href="{html.escape(item["url"], quote=True)}">Sumber</a></small></p></li>' for item in content[key])
+                sections.append(f'<h2>{heading}</h2><ul>{items}</ul>')
+        if content.get("cultural_note"):
+            note = content["cultural_note"]
+            sections.append(f'<h2>Jejak budaya dan sejarah Ceko</h2><p>{html.escape(note["text"])}</p><p><small>Sumber: <a href="{html.escape(note["url"], quote=True)}">{html.escape(note["author"])} — {html.escape(note["work"])}</a>.</small></p>')
+        return "\n".join(sections)
     meal_labels = {"Breakfast": "Snídaně", "Lunch": "Oběd", "Snack": "Svačina", "Dinner": "Večeře"}
     weather_items = "".join(f'<li><h3>{html.escape(item["name"])}</h3><p>{html.escape(item["condition"])}. {item["minimum_c"]}–{item["maximum_c"]} °C. <strong>Déšť:</strong> pravděpodobnost {item["rain_probability"]} %, očekávaný úhrn {item.get("rain_mm", 0)} mm. Vítr až {item["wind_kmh"]} km/h. Východ slunce {html.escape(item["sunrise"])}; západ {html.escape(item["sunset"])}.</p></li>' for item in weather)
     sections = []
@@ -456,39 +521,52 @@ def wellbeing_sections(report_date: str, weather: list[dict], content: dict, cal
     return "\n".join(sections)
 
 
-def merge_pages(market_page: str, news_page: str, report_date: str, weather: list[dict] | None = None, daily_content: dict | None = None, include_news: bool = True, calendar: dict | None = None, fx: dict | None = None, air_quality: list[dict] | None = None, flight: dict | None = None) -> str:
+def merge_pages(market_page: str, news_page: str, report_date: str, weather: list[dict] | None = None, daily_content: dict | None = None, include_news: bool = True, calendar: dict | None = None, fx: dict | None = None, air_quality: list[dict] | None = None, flight: dict | None = None, profile=None) -> str:
+    profile = profile or load_profile()
     market = article_body(market_page)
+    market = re.sub(r"^\s*<h2>.*?</h2>", "", market, count=1, flags=re.DOTALL | re.IGNORECASE)
+    market = demote_headings(market)
+    market_heading = "Situasi pasar" if profile["language"] == "id" else "Situace na trzích"
+    market = f"<h2>{market_heading}</h2>{market}"
     news = ""
     if include_news:
         news = article_body(news_page)
         news = re.sub(
-            r'^\s*<p><strong>(?:Daily (?:World|Economy) Briefing|Podstatné denní zprávy).*?</p>',
-            "<h2>Ekonomické zprávy</h2>",
+            r'^\s*<p><strong>(?:Daily (?:World|Economy) Briefing|Podstatné denní zprávy|Berita harian penting).*?</p>',
+            "",
             news,
             count=1,
             flags=re.DOTALL | re.IGNORECASE,
         )
+        news = demote_headings(news)
+        news_heading = "Berita ekonomi" if profile["language"] == "id" else "Ekonomické zprávy"
+        news = f"<h2>{news_heading}</h2>{news}"
     safe_date = html.escape(report_date)
-    content = validate_daily_content(daily_content or {})
-    reflection = daily_reflection(content)
-    wellbeing = wellbeing_sections(report_date, weather if weather is not None else fetch_weather(report_date), content, calendar, fx, air_quality)
-    flight_section = flight_price_section(flight)
+    content = validate_daily_content(daily_content or {}, profile)
+    reflection = daily_reflection(content, profile)
+    wellbeing = wellbeing_sections(report_date, weather if weather is not None else fetch_weather(report_date), content, calendar, fx, air_quality, profile)
+    flight_section = flight_price_section(flight, profile["language"])
+    title = html.escape(profile["title"])
+    description = "Ringkasan harian risiko pasar, portofolio, ekonomi, cuaca, resep, dan hidup sehat." if profile["language"] == "id" else "Denní přehled tržního rizika, portfolia, ekonomiky, počasí, receptů a zdravého stárnutí."
+    farewell = "Semoga hari Anda menyenangkan, tenang, bahagia, dan aman!" if profile["language"] == "id" else "Přeji hezký, klidný, šťastný a bezpečný den!"
+    language_link = '<p><a href="../index.html">Česká verze</a></p>' if profile["language"] == "id" else '<p><a href="id/index.html">Versi Bahasa Indonesia</a></p>'
     return f'''<!doctype html>
-<html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Denní přehled trhů a zdravého života — {safe_date}</title>
-<meta name="description" content="Denní přehled tržního rizika, portfolia, ekonomiky, počasí, receptů a zdravého stárnutí.">
+<html lang="{profile['language']}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title} — {safe_date}</title>
+<meta name="description" content="{description}">
 <style>
 article > h2 {{ break-before: page; page-break-before: always; }}
-article > h2:first-child {{ break-before: auto; page-break-before: auto; }}
-h2, h3 {{ break-after: avoid; page-break-after: avoid; }}
+h1, h2, h3, h4 {{ break-after: avoid; page-break-after: avoid; }}
 </style>
 </head><body><article>
+<h1>{title} — {safe_date}</h1>
+{language_link}
 {reflection}
 {wellbeing}
 {flight_section}
 {news}
 {market}
-<p><strong>Přeji hezký, klidný, šťastný a bezpečný den!</strong></p>
+<p><strong>{farewell}</strong></p>
 </article></body></html>'''
 
 
@@ -499,7 +577,10 @@ def main() -> None:
     parser.add_argument("--output", default="site")
     parser.add_argument("--weather-fixture", help="Offline JSON weather fixture")
     parser.add_argument("--wellbeing-fixture", help="Offline JSON AI-content fixture")
+    parser.add_argument("--flight-fixture", help="Reuse a verified flight result from another profile report")
+    parser.add_argument("--profile", default=DEFAULT_PROFILE)
     args = parser.parse_args()
+    profile = load_profile(args.profile)
 
     market_dir, news_dir, output = Path(args.market), Path(args.news), Path(args.output)
     market_meta = json.loads((market_dir / "report.json").read_text(encoding="utf-8"))
@@ -527,13 +608,13 @@ def main() -> None:
         pass
     generation = {"status": "fixture"} if args.wellbeing_fixture else {"status": "not_requested"}
     if args.wellbeing_fixture:
-        daily_content = validate_daily_content(json.loads(Path(args.wellbeing_fixture).read_text(encoding="utf-8")))
+        daily_content = validate_daily_content(json.loads(Path(args.wellbeing_fixture).read_text(encoding="utf-8")), profile)
     else:
         api_key = os.environ.get("GROQ_API_KEY", "")
         model = os.environ.get("GROQ_WEB_MODEL", "groq/compound")
         reflection_model = os.environ.get("GROQ_REFLECTION_MODEL", "groq/compound-mini")
         if api_key:
-            daily_content, generation = generate_daily_content(market_meta["date"], api_key, model, reflection_model)
+            daily_content, generation = generate_daily_content(market_meta["date"], api_key, model, reflection_model, profile)
         else:
             daily_content = {}
             generation = {"status": "error", "reason": "GROQ_API_KEY is not configured"}
@@ -541,14 +622,18 @@ def main() -> None:
     flight = None
     flight_generation = {"status": "error", "reason": "SERPAPI_API_KEY is not configured"}
     serpapi_key = os.environ.get("SERPAPI_API_KEY", "")
-    if serpapi_key:
+    if args.flight_fixture:
+        reused = json.loads(Path(args.flight_fixture).read_text(encoding="utf-8"))
+        flight = reused.get("flight")
+        flight_generation = {"status": "reused" if flight else "error", "source_profile": reused.get("profile")}
+    elif serpapi_key:
         flight, flight_generation = fetch_summer_flight_price(serpapi_key)
     else:
         print("Flight price omitted: SERPAPI_API_KEY is not configured", file=sys.stderr)
     page = merge_pages(
         (market_dir / "index.html").read_text(encoding="utf-8"),
         (news_dir / "index.html").read_text(encoding="utf-8"),
-        market_meta["date"], weather, daily_content, news_meta.get("selected_items", 0) > 0, calendar, fx, air_quality, flight,
+        market_meta["date"], weather, daily_content, news_meta.get("selected_items", 0) > 0, calendar, fx, air_quality, flight, profile,
     )
     (output / "index.html").write_text(page, encoding="utf-8")
     combined = {
@@ -558,6 +643,8 @@ def main() -> None:
         "news": news_meta,
         "daily_content": generation,
         "flight_price": flight_generation,
+        "flight": flight,
+        "profile": profile["name"],
     }
     (output / "report.json").write_text(json.dumps(combined, indent=2) + "\n", encoding="utf-8")
     print(f"Merged market and news components into {output / 'index.html'}")

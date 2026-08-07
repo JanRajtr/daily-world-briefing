@@ -64,22 +64,47 @@ jobs:
           python -m unittest discover -s tests -v
           python -m unittest discover -s news/tests -v
 
-      - name: Generate market component
-        run: python scripts/generate_report.py --date "${{ steps.date.outputs.report_date }}" --output work/market
+      - name: Generate Czech market component
+        run: python scripts/generate_report.py --profile cs-buddhist --date "${{ steps.date.outputs.report_date }}" --output work/cs-market
 
-      - name: Generate world-news component
+      - name: Generate Czech world-news component
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: llama-3.3-70b-versatile
-        run: python news/scripts/generate_report.py --date "${{ steps.date.outputs.report_date }}" --output work/news
+        run: python news/scripts/generate_report.py --profile cs-buddhist --date "${{ steps.date.outputs.report_date }}" --output work/cs-news
 
-      - name: Merge into one daily report
+      - name: Leave Groq token window before Czech web research
+        run: sleep 65
+
+      - name: Merge Czech daily report
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_WEB_MODEL: groq/compound
           GROQ_REFLECTION_MODEL: groq/compound-mini
           SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
-        run: python scripts/merge_reports.py --market work/market --news work/news --output site
+        run: python scripts/merge_reports.py --profile cs-buddhist --market work/cs-market --news work/cs-news --output site
+
+      - name: Leave Groq token window before Indonesian profile
+        run: sleep 65
+
+      - name: Generate Indonesian market component
+        run: python scripts/generate_report.py --profile id-islamic --date "${{ steps.date.outputs.report_date }}" --output work/id-market
+
+      - name: Generate Indonesian world-news component
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: llama-3.3-70b-versatile
+        run: python news/scripts/generate_report.py --profile id-islamic --date "${{ steps.date.outputs.report_date }}" --output work/id-news
+
+      - name: Leave Groq token window before Indonesian web research
+        run: sleep 65
+
+      - name: Merge Indonesian daily report
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_WEB_MODEL: groq/compound
+          GROQ_REFLECTION_MODEL: groq/compound-mini
+        run: python scripts/merge_reports.py --profile id-islamic --market work/id-market --news work/id-news --flight-fixture site/report.json --output site/id
 
       - name: Commit daily report
         run: |
@@ -120,8 +145,9 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           REPORT_URL="${PAGE_URL%/}/index.html?run=${RUN_ID}"
+          ID_REPORT_URL="${PAGE_URL%/}/id/index.html?run=${RUN_ID}"
           for attempt in {1..12}; do
-            if curl --fail --silent --show-error --location "$REPORT_URL" >/dev/null; then exit 0; fi
+            if curl --fail --silent --show-error --location "$REPORT_URL" >/dev/null && curl --fail --silent --show-error --location "$ID_REPORT_URL" >/dev/null; then exit 0; fi
             sleep 5
           done
           echo "Report URL was not reachable after deployment: $REPORT_URL" >&2
@@ -144,12 +170,14 @@ jobs:
             local account_label="$1"
             local username="$2"
             local password="$3"
+            local report_url="$4"
+            local report_title="$5"
             local response_file="/tmp/instapaper-${account_label}-response.txt"
             local status
             status=$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
               --user "$username:$password" \
-              --data-urlencode "url=$REPORT_URL" \
-              --data-urlencode "title=Denní přehled trhů a zdravého života — $REPORT_DATE" \
+              --data-urlencode "url=$report_url" \
+              --data-urlencode "title=$report_title" \
               https://www.instapaper.com/api/add)
             if [[ "$status" != "201" ]]; then
               echo "Instapaper ${account_label} account returned HTTP $status" >&2
@@ -159,9 +187,9 @@ jobs:
             echo "Report added to the ${account_label} Instapaper account."
           }
 
-          send_to_instapaper primary "$INSTAPAPER_USERNAME" "$INSTAPAPER_PASSWORD"
+          send_to_instapaper primary "$INSTAPAPER_USERNAME" "$INSTAPAPER_PASSWORD" "$REPORT_URL" "Denní přehled trhů a zdravého života — $REPORT_DATE"
           if [[ -n "$INSTAPAPER_USERNAME_SECONDARY" ]]; then
-            send_to_instapaper secondary "$INSTAPAPER_USERNAME_SECONDARY" "$INSTAPAPER_PASSWORD_SECONDARY"
+            send_to_instapaper secondary "$INSTAPAPER_USERNAME_SECONDARY" "$INSTAPAPER_PASSWORD_SECONDARY" "${PAGE_URL%/}/id/index.html?run=${RUN_ID}" "Ringkasan harian pasar dan hidup sehat — $REPORT_DATE"
           else
-            echo "Secondary Instapaper account is not configured; skipping it."
+            echo "Secondary Instapaper account is not configured; skipping the Indonesian report."
           fi

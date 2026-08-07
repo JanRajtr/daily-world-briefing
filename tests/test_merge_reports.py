@@ -34,6 +34,7 @@ class MergeTests(unittest.TestCase):
         weather = [{"name": "Horoměřice", "condition": "Clear", "minimum_c": 15, "maximum_c": 25, "rain_probability": 10, "rain_mm": 0.4, "wind_kmh": 12, "sunrise": "05:32", "sunset": "20:36"}]
         page = merger.merge_pages(market, news, "2026-08-05", weather, self.sourced_content())
         self.assertEqual(page.count("<article>"), 1)
+        self.assertEqual(page.count("<h1>"), 1)
         self.assertIn("Market component", page)
         self.assertIn("<h2>Myšlenka dne</h2>", page)
         self.assertIn("Ověřené učení", page)
@@ -42,6 +43,7 @@ class MergeTests(unittest.TestCase):
         self.assertLess(page.index("Myšlenka dne"), page.index("Market component"))
         self.assertIn("<h2>Ekonomické zprávy</h2>", page)
         self.assertIn("Today in brief", page)
+        self.assertIn("<h3>Today in brief</h3>", page)
         self.assertNotIn("Daily World Briefing — 2026-08-05.</strong> Intro", page)
         self.assertLess(page.index("Ekonomické zprávy"), page.index("Market component"))
         self.assertIn("Dnešní počasí", page)
@@ -94,7 +96,21 @@ class MergeTests(unittest.TestCase):
             "2026-08-05", [], {},
         )
         self.assertIn("article > h2 { break-before: page; page-break-before: always; }", page)
-        self.assertIn("article > h2:first-child { break-before: auto; page-break-before: auto; }", page)
+        self.assertNotIn("article > h3 { break-before: page", page)
+
+    def test_merged_heading_hierarchy_demotes_component_subsections(self):
+        page = merger.merge_pages(
+            "<article><h2>Situace na trzích</h2><p>Úvod</p><h2>Souhrnné riziko</h2></article>",
+            "<article><p><strong>Podstatné denní zprávy — 2026-08-05.</strong></p><h2>Dnes stručně</h2><h2>Svět</h2><ol><li><h3>Příběh</h3></li></ol></article>",
+            "2026-08-05", [], {},
+        )
+        self.assertEqual(page.count("<h1>"), 1)
+        self.assertIn("<h2>Ekonomické zprávy</h2>", page)
+        self.assertIn("<h3>Dnes stručně</h3>", page)
+        self.assertIn("<h3>Svět</h3>", page)
+        self.assertIn("<h4>Příběh</h4>", page)
+        self.assertIn("<h2>Situace na trzích</h2>", page)
+        self.assertIn("<h3>Souhrnné riziko</h3>", page)
 
     def test_rejects_page_without_article(self):
         with self.assertRaisesRegex(ValueError, "no <article>"):
@@ -102,6 +118,20 @@ class MergeTests(unittest.TestCase):
 
     def test_reflection_is_omitted_without_sourced_content(self):
         self.assertEqual(merger.daily_reflection({}), "")
+
+    def test_indonesian_islamic_profile_uses_verified_teaching_and_localized_shell(self):
+        profile = merger.load_profile("id-islamic")
+        content = {"spiritual_teaching": {"text": "Ajaran terverifikasi", "author": "Al-Qur'an", "work": "Surah 2:286", "url": "https://quran.kemenag.go.id/"}}
+        page = merger.merge_pages("<article><h2>Situasi pasar</h2></article>", "<article><p><strong>Berita harian penting — 2026-08-07.</strong></p><h2>Hari ini secara singkat</h2></article>", "2026-08-07", [], content, profile=profile)
+        self.assertIn('lang="id"', page)
+        self.assertIn("Renungan hari ini", page)
+        self.assertIn("Berita ekonomi", page)
+        self.assertIn("Semoga hari Anda", page)
+
+    def test_islamic_profile_rejects_unapproved_teaching_source(self):
+        profile = merger.load_profile("id-islamic")
+        content = {"spiritual_teaching": {"text": "Tidak terverifikasi", "author": "Blog", "work": "Artikel", "url": "https://example.test/islam"}}
+        self.assertNotIn("spiritual_teaching", merger.validate_daily_content(content, profile))
 
     def test_dynamic_content_is_validated_and_rendered(self):
         content = self.sourced_content()
@@ -146,7 +176,7 @@ class MergeTests(unittest.TestCase):
         )
         self.assertNotIn("Economy news", page)
         self.assertNotIn("Global economy and portfolio", page)
-        self.assertIn("Market situation", page)
+        self.assertIn("Situace na trzích", page)
 
     @patch.object(merger.time, "sleep")
     @patch.object(merger, "request_groq_json")

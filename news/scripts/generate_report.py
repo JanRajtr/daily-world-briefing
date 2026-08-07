@@ -20,6 +20,9 @@ from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parents[2] / "scripts"))
+from profiles import DEFAULT_PROFILE, load_profile
+
 USER_AGENT = "daily-news-briefing/1.0 (public-feed reader)"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 PUBMED_SEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
@@ -393,12 +396,18 @@ def select_items(items: list[Item], limits: dict[str, int] | None = None) -> lis
     return selected
 
 
-def ai_prompt(items: list[Item], report_date: date) -> str:
+def ai_prompt(items: list[Item], report_date: date, profile=None) -> str:
+    profile = profile or load_profile()
     records = []
     for item in items:
         record = {key: value for key, value in asdict(item).items() if key not in ("score",)}
         record["summary"] = record["summary"][:400]
         records.append(record)
+    if profile["language"] == "id":
+        return f"""Buat ringkasan berita harian yang ringkas dalam Bahasa Indonesia untuk {report_date.isoformat()}, HANYA dari RECORDS yang diberikan. Terjemahkan dan ringkas dengan setia; jangan menciptakan fakta, hubungan, ketidakpastian, atau prakiraan.
+Kembalikan JSON valid tanpa markdown dalam bentuk yang sama seperti ini: {{"overview":["..."],"sections":{{"czech_eu":[STORY],"world":[STORY],"economy":[STORY],"science":[STORY]}}}}. Setiap STORY harus memiliki title, summary, why_it_matters, unknown, certainty, item_ids, dan evidence. Gunakan paling banyak 5 cerita per bagian. Setiap fakta harus tersedia di RECORDS dan setiap item_ids harus menunjuk catatan sumber. Atribusikan klaim perusahaan, pemerintah, dan militer. Jangan membuat prakiraan harga. Jika dukungan sumber lemah, abaikan cerita. Semua teks editorial harus dalam Bahasa Indonesia.
+RECORDS:
+{json.dumps(records, ensure_ascii=False)}"""
     return f"""Vytvoř stručný denní přehled v přirozené češtině pro {report_date.isoformat()} POUZE z dodaných záznamů. Překládej a zkracuj věrně; nevymýšlej souvislosti, fakta, nejistoty ani prognózy.
 Return valid JSON, with no markdown, in this exact shape:
 {{"overview":["..."],"sections":{{"czech_eu":[STORY],"world":[STORY],"economy":[STORY],"science":[STORY]}}}}
@@ -408,15 +417,16 @@ RECORDS:
 {json.dumps(records, ensure_ascii=False)}"""
 
 
-def call_groq(items: list[Item], report_date: date, api_key: str, model: str) -> dict:
+def call_groq(items: list[Item], report_date: date, api_key: str, model: str, profile=None) -> dict:
+    profile = profile or load_profile()
     payload = json.dumps({
         "model": model,
         "temperature": 0.1,
         "max_completion_tokens": 2800,
         "response_format": {"type": "json_object"},
         "messages": [
-            {"role": "system", "content": "Jsi pečlivý český překladatel a editor zpráv. Každé tvrzení opíráš výhradně o dodané záznamy."},
-            {"role": "user", "content": ai_prompt(items, report_date)},
+            {"role": "system", "content": f"You are a careful {profile['language_name']} translator and news editor. Base every claim exclusively on supplied records."},
+            {"role": "user", "content": ai_prompt(items, report_date, profile)},
         ],
     }).encode()
     request = urllib.request.Request(GROQ_URL, data=payload, method="POST", headers={
@@ -441,7 +451,7 @@ def validate_briefing(briefing: dict, items: list[Item]) -> dict:
             ids = story.get("item_ids", []) if isinstance(story, dict) else []
             if story.get("title") and story.get("summary") and ids and all(identifier in valid_ids for identifier in ids) and all(next(item for item in items if item.id == identifier).section == section for identifier in ids):
                 why_it_matters = clean_text(str(story.get("why_it_matters", "")))
-                if why_it_matters.lower().startswith(("tato informace je důležitá", "tato zpráva je důležitá", "je to důležité pro")):
+                if why_it_matters.lower().startswith(("tato informace je důležitá", "tato zpráva je důležitá", "je to důležité pro", "informasi ini penting", "berita ini penting")):
                     why_it_matters = ""
                 clean.append({
                     "title": clean_text(str(story["title"])),
@@ -457,7 +467,10 @@ def validate_briefing(briefing: dict, items: list[Item]) -> dict:
     return briefing
 
 
-def fallback_briefing(items: list[Item]) -> dict:
+def fallback_briefing(items: list[Item], profile=None) -> dict:
+    profile = profile or load_profile()
+    if profile["language"] == "id":
+        return {"overview": [], "sections": {section: [] for section in SECTIONS}}
     sections = {}
     for section in SECTIONS:
         stories = []
@@ -477,7 +490,9 @@ def fallback_briefing(items: list[Item]) -> dict:
     return {"overview": overview, "sections": sections}
 
 
-def render_report(report_date: date, briefing: dict, items: list[Item], failures: list[str], generated_at: str, ai_used: bool) -> str:
+def render_report(report_date: date, briefing: dict, items: list[Item], failures: list[str], generated_at: str, ai_used: bool, profile=None) -> str:
+    profile = profile or load_profile()
+    language = profile["language"]
     by_id = {item.id: item for item in items}
     labels = {
         "czech_eu": "Česko a Evropská unie",
@@ -485,6 +500,8 @@ def render_report(report_date: date, briefing: dict, items: list[Item], failures
         "economy": "Světová ekonomika a portfolio",
         "science": "Věda, zdraví a technologie",
     }
+    if language == "id":
+        labels = {"czech_eu": "Ceko dan Uni Eropa", "world": "Berita penting dunia", "economy": "Ekonomi dunia dan portofolio", "science": "Sains, kesehatan, dan teknologi"}
     overview = "".join(f"<li>{html.escape(value)}</li>" for value in briefing.get("overview", []))
     sections_html = []
     for section in SECTIONS:
@@ -501,20 +518,28 @@ def render_report(report_date: date, briefing: dict, items: list[Item], failures
             label = story.get("evidence", "")
             if "company" in types:
                 label = (label + "; company announcement — interested-party source").strip("; ")
+            why_label, unknown_label, certainty_label = (("Mengapa penting", "Yang belum diketahui", "Kepastian") if language == "id" else ("Proč je to důležité", "Co zatím nevíme", "Jistota"))
+            watch_label, evidence_label, sources_label = (("Instrumen yang dipantau", "Jenis bukti/sumber", "Sumber") if language == "id" else ("Sledované nástroje", "Typ důkazu/zdroje", "Zdroje"))
             stories_html.append(
                 f'<li><h3>{html.escape(story["title"])}</h3>'
                 f'<p>{html.escape(story["summary"])}</p>'
-                + (f'<p><strong>Proč je to důležité:</strong> {html.escape(story["why_it_matters"])}</p>' if story.get("why_it_matters") else "")
-                + (f'<p><strong>Co zatím nevíme:</strong> {html.escape(story["unknown"])}</p>' if story.get("unknown") else "")
-                + (f'<p><strong>Jistota:</strong> {html.escape(story["certainty"])}</p>' if story.get("certainty") else "")
-                + (f'<p><strong>Sledované nástroje:</strong> {html.escape(", ".join(sorted(watchlist)))}</p>' if watchlist else "")
-                + (f'<p><strong>Typ důkazu/zdroje:</strong> {html.escape(label)}</p>' if label else "")
-                + f'<p><strong>Zdroje:</strong> {"; ".join(sources)}</p></li>'
+                + (f'<p><strong>{why_label}:</strong> {html.escape(story["why_it_matters"])}</p>' if story.get("why_it_matters") else "")
+                + (f'<p><strong>{unknown_label}:</strong> {html.escape(story["unknown"])}</p>' if story.get("unknown") else "")
+                + (f'<p><strong>{certainty_label}:</strong> {html.escape(story["certainty"])}</p>' if story.get("certainty") else "")
+                + (f'<p><strong>{watch_label}:</strong> {html.escape(", ".join(sorted(watchlist)))}</p>' if watchlist else "")
+                + (f'<p><strong>{evidence_label}:</strong> {html.escape(label)}</p>' if label else "")
+                + f'<p><strong>{sources_label}:</strong> {"; ".join(sources)}</p></li>'
             )
         if stories_html:
             sections_html.append(f'<h2>{labels[section]}</h2><ol>{"".join(stories_html)}</ol>')
-    warning = f'<p><strong>Upozornění zdrojů:</strong> {html.escape("; ".join(failures))}</p>' if failures else ""
+    warning = f'<p><strong>{"Peringatan sumber" if language == "id" else "Upozornění zdrojů"}:</strong> {html.escape("; ".join(failures))}</p>' if failures else ""
     mode = "strojový překlad a shrnutí založené na zdrojích" if ai_used else "výpis původních úryvků bez překladu"
+    if language == "id":
+        return f'''<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Berita harian penting — {report_date.isoformat()}</title></head><body><article>
+<p><strong>Berita harian penting — {report_date.isoformat()}.</strong> Maksimal lima peristiwa bersumber di setiap bagian, tanpa arus pembaruan tanpa akhir.</p>
+{f'<h2>Hari ini secara singkat</h2><ul>{overview}</ul>' if overview else ''}{''.join(sections_html)}{warning}
+<h2>Metode editorial</h2><p>Pilihan dibatasi lima berita per bagian. Klaim perusahaan, pemerintah, dan militer diatribusikan kepada pembuatnya dan bukan konfirmasi independen. Tidak ada berita tanpa catatan sumber tertentu. Ini bukan nasihat investasi atau medis.</p>
+<p>Dibuat {generated_at} UTC; mode: {"terjemahan dan ringkasan berbasis sumber" if ai_used else "kutipan sumber tanpa terjemahan"}. Sistem memproses {len(items)} catatan terpilih. Tautan menuju sumber asli.</p></article></body></html>'''
     return f'''<!doctype html>
 <html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Podstatné denní zprávy — {report_date.isoformat()}</title><meta name="description" content="Omezený, zdrojově podložený přehled podstatných zpráv.">
@@ -540,7 +565,9 @@ def main() -> None:
     parser.add_argument("--fixture", help="Offline JSON item fixture")
     parser.add_argument("--no-ai", action="store_true", help="Force deterministic extractive output")
     parser.add_argument("--model", default=os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"))
+    parser.add_argument("--profile", default=DEFAULT_PROFILE)
     args = parser.parse_args()
+    profile = load_profile(args.profile)
     report_date = date.fromisoformat(args.date)
     if report_date > date.today():
         raise SystemExit(f"Report date {report_date} is in the future; refusing to publish.")
@@ -564,7 +591,7 @@ def main() -> None:
     ai_used = False
     if items and api_key and not args.no_ai:
         try:
-            briefing = validate_briefing(call_groq(items, report_date, api_key, args.model), items)
+            briefing = validate_briefing(call_groq(items, report_date, api_key, args.model, profile), items)
             ai_used = True
         except (urllib.error.URLError, TimeoutError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
             if isinstance(exc, urllib.error.HTTPError) and exc.code == 401:
@@ -573,17 +600,17 @@ def main() -> None:
                 failures.append("AI summarization unavailable: Groq rejected an oversized request (HTTP 413)")
             else:
                 failures.append(f"AI summarization unavailable: {exc}")
-            briefing = fallback_briefing(items)
+            briefing = fallback_briefing(items, profile)
     else:
         if items and not api_key and not args.no_ai:
             failures.append("GROQ_API_KEY is not configured; used extractive fallback")
-        briefing = fallback_briefing(items)
+        briefing = fallback_briefing(items, profile)
 
     generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
-    (output / "index.html").write_text(render_report(report_date, briefing, items, failures, generated_at, ai_used), encoding="utf-8")
-    metadata = {"date": report_date.isoformat(), "generated_at": generated_at, "ai_used": ai_used, "model": args.model if ai_used else None, "selected_items": len(items), "feed_failures": len(failures)}
+    (output / "index.html").write_text(render_report(report_date, briefing, items, failures, generated_at, ai_used, profile), encoding="utf-8")
+    metadata = {"date": report_date.isoformat(), "generated_at": generated_at, "ai_used": ai_used, "model": args.model if ai_used else None, "selected_items": len(items), "feed_failures": len(failures), "profile": profile["name"]}
     (output / "report.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     print(f"Generated {output / 'index.html'} from {len(items)} selected records")
 
