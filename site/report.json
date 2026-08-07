@@ -1,15 +1,15 @@
 {
   "date": "2026-08-07",
-  "generated_at": "2026-08-07T09:23:13Z",
+  "generated_at": "2026-08-07T09:32:51Z",
   "market": {
     "date": "2026-08-07",
     "score": 22.01866854190615,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-07T09:23:04Z"
+    "generated_at": "2026-08-07T09:32:43Z"
   },
   "news": {
     "date": "2026-08-07",
-    "generated_at": "2026-08-07T09:23:13Z",
+    "generated_at": "2026-08-07T09:32:51Z",
     "ai_used": true,
     "model": "llama-3.3-70b-versatile",
     "selected_items": 6,
@@ -33,9 +33,11 @@
     },
     "extras": {
       "status": "error",
-      "attempts": 3,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 498668, Requested 2543. Please try again in 3m29.2608s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "attempts": 1,
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 496810, Requested 3810. Please try again in 1m47.136s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
       "max_completion_tokens": 3200,
+      "rate_limit": "TPD",
+      "retry_after_seconds": 107.136,
       "model": "groq/compound"
     }
   }
