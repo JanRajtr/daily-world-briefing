@@ -1,16 +1,16 @@
 {
-  "date": "2026-08-09",
-  "generated_at": "2026-08-09T06:58:41Z",
+  "date": "2026-08-10",
+  "generated_at": "2026-08-10T07:44:33Z",
   "market": {
-    "date": "2026-08-09",
+    "date": "2026-08-10",
     "score": 20.07381241747182,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-09T06:58:31Z",
+    "generated_at": "2026-08-10T07:44:22Z",
     "profile": "cs-buddhist"
   },
   "news": {
-    "date": "2026-08-09",
-    "generated_at": "2026-08-09T06:58:41Z",
+    "date": "2026-08-10",
+    "generated_at": "2026-08-10T07:44:33Z",
     "ai_used": true,
     "model": "llama-3.3-70b-versatile",
     "selected_items": 16,
@@ -29,7 +29,7 @@
       "limit_tokens": 70000,
       "remaining_tokens": 68816,
       "reset_tokens_seconds": 1.014,
-      "quote": "present",
+      "quote": "omitted",
       "spiritual_teaching": "present",
       "buddhist_teaching": "present",
       "model": "groq/compound-mini"
@@ -37,7 +37,7 @@
     "extras": {
       "status": "error",
       "attempts": 3,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 21609, Requested 15945. Please try again in 15.108s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 19939, Requested 12379. Please try again in 4.636s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
       "max_completion_tokens": 3200,
       "model": "groq/compound"
     }
@@ -68,7 +68,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-09T07:06:55+00:00",
+    "checked_at": "2026-08-10T07:52:09+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "cs-buddhist"
