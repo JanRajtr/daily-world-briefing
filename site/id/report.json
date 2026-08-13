@@ -1,16 +1,16 @@
 {
-  "date": "2026-08-12",
-  "generated_at": "2026-08-12T07:36:20Z",
+  "date": "2026-08-13",
+  "generated_at": "2026-08-13T07:46:05Z",
   "market": {
-    "date": "2026-08-12",
-    "score": 20.314315722188216,
+    "date": "2026-08-13",
+    "score": 17.566738796563435,
     "label": "Rendah",
-    "generated_at": "2026-08-12T07:36:09Z",
+    "generated_at": "2026-08-13T07:45:54Z",
     "profile": "id-islamic"
   },
   "news": {
-    "date": "2026-08-12",
-    "generated_at": "2026-08-12T07:36:20Z",
+    "date": "2026-08-13",
+    "generated_at": "2026-08-13T07:46:05Z",
     "ai_used": true,
     "model": "llama-3.3-70b-versatile",
     "selected_items": 16,
@@ -34,7 +34,7 @@
     "extras": {
       "status": "error",
       "attempts": 3,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 18258, Requested 14757. Please try again in 6.03s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 20496, Requested 14362. Please try again in 9.716s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
       "max_completion_tokens": 3200,
       "model": "groq/compound"
     }
@@ -44,7 +44,7 @@
     "source_profile": "cs-buddhist"
   },
   "flight": {
-    "price_czk": 97852,
+    "price_czk": 97848,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -53,7 +53,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-12T07:35:02+00:00",
+    "checked_at": "2026-08-13T07:44:47+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "id-islamic"
