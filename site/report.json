@@ -1,16 +1,16 @@
 {
-  "date": "2026-08-14",
-  "generated_at": "2026-08-14T07:26:27Z",
+  "date": "2026-08-15",
+  "generated_at": "2026-08-15T06:40:14Z",
   "market": {
-    "date": "2026-08-14",
-    "score": 16.81088755542761,
+    "date": "2026-08-15",
+    "score": 17.014773028209348,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-14T07:26:11Z",
+    "generated_at": "2026-08-15T06:40:00Z",
     "profile": "cs-buddhist"
   },
   "news": {
-    "date": "2026-08-14",
-    "generated_at": "2026-08-14T07:26:27Z",
+    "date": "2026-08-15",
+    "generated_at": "2026-08-15T06:40:14Z",
     "ai_used": true,
     "model": "llama-3.3-70b-versatile",
     "selected_items": 17,
@@ -37,7 +37,7 @@
     "extras": {
       "status": "error",
       "attempts": 3,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 21959, Requested 20175. Please try again in 24.267999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 21903, Requested 18904. Please try again in 21.614s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
       "max_completion_tokens": 3200,
       "model": "groq/compound"
     }
@@ -58,7 +58,7 @@
     ]
   },
   "flight": {
-    "price_czk": 97839,
+    "price_czk": 97821,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -67,7 +67,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-14T07:34:02+00:00",
+    "checked_at": "2026-08-15T06:48:09+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "cs-buddhist"
