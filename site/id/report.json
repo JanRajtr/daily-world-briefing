@@ -1,19 +1,19 @@
 {
-  "date": "2026-08-19",
-  "generated_at": "2026-08-19T06:56:07Z",
+  "date": "2026-08-20",
+  "generated_at": "2026-08-20T06:56:41Z",
   "market": {
-    "date": "2026-08-19",
-    "score": 18.238891307181404,
+    "date": "2026-08-20",
+    "score": 16.084143703373933,
     "label": "Rendah",
-    "generated_at": "2026-08-19T06:55:57Z",
+    "generated_at": "2026-08-20T06:56:34Z",
     "profile": "id-islamic"
   },
   "news": {
-    "date": "2026-08-19",
-    "generated_at": "2026-08-19T06:56:07Z",
+    "date": "2026-08-20",
+    "generated_at": "2026-08-20T06:56:41Z",
     "ai_used": false,
     "model": null,
-    "selected_items": 16,
+    "selected_items": 17,
     "feed_failures": 1,
     "profile": "id-islamic"
   },
@@ -23,20 +23,18 @@
       "extras": "groq/compound"
     },
     "reflection": {
-      "status": "ok",
+      "status": "error",
       "attempts": 1,
+      "reason": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
       "max_completion_tokens": 1000,
-      "limit_tokens": 70000,
-      "remaining_tokens": 68775,
-      "reset_tokens_seconds": 1.05,
-      "quote": "present",
-      "spiritual_teaching": "present",
+      "quote": "omitted",
+      "spiritual_teaching": "omitted",
       "model": "groq/compound-mini"
     },
     "extras": {
       "status": "error",
-      "attempts": 3,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 21173, Requested 12754. Please try again in 7.853999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "attempts": 1,
+      "reason": "HTTPError: HTTP Error 413: Payload Too Large: Request Entity Too Large",
       "max_completion_tokens": 3200,
       "model": "groq/compound"
     }
@@ -46,7 +44,7 @@
     "source_profile": "cs-buddhist"
   },
   "flight": {
-    "price_czk": 97800,
+    "price_czk": 97788,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -55,7 +53,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-19T06:54:42+00:00",
+    "checked_at": "2026-08-20T06:55:27+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "id-islamic"
