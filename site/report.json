@@ -1,16 +1,16 @@
 {
-  "date": "2026-08-20",
-  "generated_at": "2026-08-20T06:48:01Z",
+  "date": "2026-08-21",
+  "generated_at": "2026-08-21T06:50:02Z",
   "market": {
-    "date": "2026-08-20",
-    "score": 16.084143703373933,
+    "date": "2026-08-21",
+    "score": 15.997748663227021,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-20T06:47:53Z",
+    "generated_at": "2026-08-21T06:49:54Z",
     "profile": "cs-buddhist"
   },
   "news": {
-    "date": "2026-08-20",
-    "generated_at": "2026-08-20T06:48:01Z",
+    "date": "2026-08-21",
+    "generated_at": "2026-08-21T06:50:02Z",
     "ai_used": false,
     "model": null,
     "selected_items": 17,
@@ -23,21 +23,19 @@
       "extras": "groq/compound"
     },
     "reflection": {
-      "status": "ok",
+      "status": "error",
       "attempts": 1,
+      "reason": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
       "max_completion_tokens": 1000,
-      "limit_tokens": 70000,
-      "remaining_tokens": 68816,
-      "reset_tokens_seconds": 1.014,
-      "quote": "present",
-      "spiritual_teaching": "present",
-      "buddhist_teaching": "present",
+      "quote": "omitted",
+      "spiritual_teaching": "omitted",
+      "buddhist_teaching": "omitted",
       "model": "groq/compound-mini"
     },
     "extras": {
       "status": "error",
       "attempts": 3,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 22219, Requested 15330. Please try again in 15.097999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 17860, Requested 14113. Please try again in 3.946s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
       "max_completion_tokens": 3200,
       "model": "groq/compound"
     }
@@ -57,7 +55,7 @@
     ]
   },
   "flight": {
-    "price_czk": 97788,
+    "price_czk": 97772,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -66,7 +64,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-20T06:55:27+00:00",
+    "checked_at": "2026-08-21T06:57:36+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "cs-buddhist"

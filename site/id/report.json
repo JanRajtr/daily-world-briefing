@@ -1,16 +1,16 @@
 {
-  "date": "2026-08-20",
-  "generated_at": "2026-08-20T06:56:41Z",
+  "date": "2026-08-21",
+  "generated_at": "2026-08-21T06:58:55Z",
   "market": {
-    "date": "2026-08-20",
-    "score": 16.084143703373933,
+    "date": "2026-08-21",
+    "score": 15.997748663227021,
     "label": "Rendah",
-    "generated_at": "2026-08-20T06:56:34Z",
+    "generated_at": "2026-08-21T06:58:46Z",
     "profile": "id-islamic"
   },
   "news": {
-    "date": "2026-08-20",
-    "generated_at": "2026-08-20T06:56:41Z",
+    "date": "2026-08-21",
+    "generated_at": "2026-08-21T06:58:55Z",
     "ai_used": false,
     "model": null,
     "selected_items": 17,
@@ -44,7 +44,7 @@
     "source_profile": "cs-buddhist"
   },
   "flight": {
-    "price_czk": 97788,
+    "price_czk": 97772,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -53,7 +53,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-20T06:55:27+00:00",
+    "checked_at": "2026-08-21T06:57:36+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "id-islamic"
