@@ -1,16 +1,16 @@
 {
-  "date": "2026-08-21",
-  "generated_at": "2026-08-21T06:58:55Z",
+  "date": "2026-08-22",
+  "generated_at": "2026-08-22T06:50:40Z",
   "market": {
-    "date": "2026-08-21",
-    "score": 15.997748663227021,
+    "date": "2026-08-22",
+    "score": 16.639487510328582,
     "label": "Rendah",
-    "generated_at": "2026-08-21T06:58:46Z",
+    "generated_at": "2026-08-22T06:50:31Z",
     "profile": "id-islamic"
   },
   "news": {
-    "date": "2026-08-21",
-    "generated_at": "2026-08-21T06:58:55Z",
+    "date": "2026-08-22",
+    "generated_at": "2026-08-22T06:50:40Z",
     "ai_used": false,
     "model": null,
     "selected_items": 17,
@@ -33,8 +33,8 @@
     },
     "extras": {
       "status": "error",
-      "attempts": 1,
-      "reason": "HTTPError: HTTP Error 413: Payload Too Large: Request Entity Too Large",
+      "attempts": 3,
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 20462, Requested 12544. Please try again in 6.012s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
       "max_completion_tokens": 3200,
       "model": "groq/compound"
     }
@@ -44,7 +44,7 @@
     "source_profile": "cs-buddhist"
   },
   "flight": {
-    "price_czk": 97772,
+    "price_czk": 97746,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -53,7 +53,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-21T06:57:36+00:00",
+    "checked_at": "2026-08-22T06:49:19+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "id-islamic"
