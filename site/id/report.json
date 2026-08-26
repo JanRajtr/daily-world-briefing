@@ -1,19 +1,19 @@
 {
-  "date": "2026-08-25",
-  "generated_at": "2026-08-25T06:59:28Z",
+  "date": "2026-08-26",
+  "generated_at": "2026-08-26T07:01:02Z",
   "market": {
-    "date": "2026-08-25",
-    "score": 15.709497955649447,
+    "date": "2026-08-26",
+    "score": 16.247589609336366,
     "label": "Rendah",
-    "generated_at": "2026-08-25T06:59:21Z",
+    "generated_at": "2026-08-26T07:00:56Z",
     "profile": "id-islamic"
   },
   "news": {
-    "date": "2026-08-25",
-    "generated_at": "2026-08-25T06:59:28Z",
+    "date": "2026-08-26",
+    "generated_at": "2026-08-26T07:01:02Z",
     "ai_used": false,
     "model": null,
-    "selected_items": 17,
+    "selected_items": 16,
     "feed_failures": 1,
     "profile": "id-islamic"
   },
@@ -25,7 +25,7 @@
     "reflection": {
       "status": "error",
       "attempts": 1,
-      "reason": "HTTPError: HTTP Error 413: Payload Too Large: Request Entity Too Large",
+      "reason": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
       "max_completion_tokens": 1000,
       "quote": "omitted",
       "spiritual_teaching": "omitted",
@@ -33,8 +33,8 @@
     },
     "extras": {
       "status": "error",
-      "attempts": 1,
-      "reason": "HTTPError: HTTP Error 413: Payload Too Large: Request Entity Too Large",
+      "attempts": 3,
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 19902, Requested 12313. Please try again in 4.43s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
       "max_completion_tokens": 3200,
       "model": "groq/compound"
     }
@@ -44,7 +44,7 @@
     "source_profile": "cs-buddhist"
   },
   "flight": {
-    "price_czk": 97715,
+    "price_czk": 97710,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -53,7 +53,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-25T06:58:13+00:00",
+    "checked_at": "2026-08-26T06:59:49+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "id-islamic"
