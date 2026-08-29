@@ -1,19 +1,19 @@
 {
-  "date": "2026-08-28",
-  "generated_at": "2026-08-28T18:27:04Z",
+  "date": "2026-08-29",
+  "generated_at": "2026-08-29T12:36:00Z",
   "market": {
-    "date": "2026-08-28",
-    "score": 14.70129622768685,
+    "date": "2026-08-29",
+    "score": 14.673423066978279,
     "label": "Rendah",
-    "generated_at": "2026-08-28T18:26:55Z",
+    "generated_at": "2026-08-29T12:35:51Z",
     "profile": "id-islamic"
   },
   "news": {
-    "date": "2026-08-28",
-    "generated_at": "2026-08-28T18:27:04Z",
+    "date": "2026-08-29",
+    "generated_at": "2026-08-29T12:36:00Z",
     "ai_used": false,
     "model": null,
-    "selected_items": 19,
+    "selected_items": 18,
     "feed_failures": 1,
     "profile": "id-islamic"
   },
@@ -34,7 +34,7 @@
     "extras": {
       "status": "error",
       "attempts": 3,
-      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 23418, Requested 11691. Please try again in 10.218s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "reason": "HTTPError: HTTP Error 429: Too Many Requests: Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kzdn3nwwer88qzkm7nj18n7h` service tier `on_demand` on tokens per minute (TPM): Limit 30000, Used 16420, Requested 14523. Please try again in 1.886s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
       "max_completion_tokens": 3200,
       "model": "groq/compound"
     }
@@ -44,7 +44,7 @@
     "source_profile": "cs-buddhist"
   },
   "flight": {
-    "price_czk": 97701,
+    "price_czk": 97741,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -53,7 +53,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-28T18:25:46+00:00",
+    "checked_at": "2026-08-29T12:34:33+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "id-islamic"
