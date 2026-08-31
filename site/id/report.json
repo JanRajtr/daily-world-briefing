@@ -1,19 +1,19 @@
 {
-  "date": "2026-08-30",
-  "generated_at": "2026-08-30T11:32:35Z",
+  "date": "2026-08-31",
+  "generated_at": "2026-08-31T13:04:21Z",
   "market": {
-    "date": "2026-08-30",
+    "date": "2026-08-31",
     "score": 14.673423066978279,
     "label": "Rendah",
-    "generated_at": "2026-08-30T11:32:27Z",
+    "generated_at": "2026-08-31T13:04:10Z",
     "profile": "id-islamic"
   },
   "news": {
-    "date": "2026-08-30",
-    "generated_at": "2026-08-30T11:32:35Z",
+    "date": "2026-08-31",
+    "generated_at": "2026-08-31T13:04:21Z",
     "ai_used": false,
     "model": null,
-    "selected_items": 18,
+    "selected_items": 17,
     "feed_failures": 1,
     "profile": "id-islamic"
   },
@@ -53,7 +53,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-30T11:31:17+00:00",
+    "checked_at": "2026-08-31T13:03:02+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "id-islamic"
