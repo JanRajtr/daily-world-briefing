@@ -1,19 +1,19 @@
 {
-  "date": "2026-08-31",
-  "generated_at": "2026-08-31T12:58:57Z",
+  "date": "2026-09-01",
+  "generated_at": "2026-09-01T11:16:08Z",
   "market": {
-    "date": "2026-08-31",
-    "score": 14.673423066978279,
+    "date": "2026-09-01",
+    "score": 15.035244555096174,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-08-31T12:58:49Z",
+    "generated_at": "2026-09-01T11:16:02Z",
     "profile": "cs-buddhist"
   },
   "news": {
-    "date": "2026-08-31",
-    "generated_at": "2026-08-31T12:58:57Z",
+    "date": "2026-09-01",
+    "generated_at": "2026-09-01T11:16:08Z",
     "ai_used": false,
     "model": null,
-    "selected_items": 17,
+    "selected_items": 16,
     "feed_failures": 1,
     "profile": "cs-buddhist"
   },
@@ -41,30 +41,23 @@
     }
   },
   "flight_price": {
-    "status": "ok",
+    "status": "error",
     "searched_date_pairs": 10,
-    "successful_date_pairs": 4,
+    "successful_date_pairs": 0,
     "failures": [
-      "2027-06-29: ValueError: Google Flights hasn't returned any results for this query.",
-      "2027-07-06: ValueError: Google Flights hasn't returned any results for this query.",
-      "2027-07-13: ValueError: Google Flights hasn't returned any results for this query.",
-      "2027-07-20: ValueError: Google Flights hasn't returned any results for this query.",
-      "2027-07-27: ValueError: Google Flights hasn't returned any results for this query.",
-      "2027-08-01: ValueError: Google Flights hasn't returned any results for this query."
-    ]
-  },
-  "flight": {
-    "price_czk": 97741,
-    "outbound_date": "2027-06-01",
-    "return_date": "2027-07-01",
-    "airlines": [
-      "Turkish Airlines"
+      "2027-06-01: HTTPError: HTTP Error 429: Too Many Requests",
+      "2027-06-08: HTTPError: HTTP Error 429: Too Many Requests",
+      "2027-06-15: HTTPError: HTTP Error 429: Too Many Requests",
+      "2027-06-22: HTTPError: HTTP Error 429: Too Many Requests",
+      "2027-06-29: HTTPError: HTTP Error 429: Too Many Requests",
+      "2027-07-06: HTTPError: HTTP Error 429: Too Many Requests",
+      "2027-07-13: HTTPError: HTTP Error 429: Too Many Requests",
+      "2027-07-20: HTTPError: HTTP Error 429: Too Many Requests",
+      "2027-07-27: HTTPError: HTTP Error 429: Too Many Requests",
+      "2027-08-01: HTTPError: HTTP Error 429: Too Many Requests"
     ],
-    "outbound_stops": 1,
-    "duration_minutes": 1035,
-    "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-08-31T13:03:02+00:00",
-    "sampled_date_pairs": 10
+    "reason": "No verified Google Flights result was returned"
   },
+  "flight": null,
   "profile": "cs-buddhist"
 }
