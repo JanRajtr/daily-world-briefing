@@ -1,16 +1,16 @@
 {
-  "date": "2026-09-01",
-  "generated_at": "2026-09-01T11:19:54Z",
+  "date": "2026-09-02",
+  "generated_at": "2026-09-02T10:54:00Z",
   "market": {
-    "date": "2026-09-01",
-    "score": 15.035244555096174,
+    "date": "2026-09-02",
+    "score": 16.019895072201923,
     "label": "Rendah",
-    "generated_at": "2026-09-01T11:19:48Z",
+    "generated_at": "2026-09-02T10:53:53Z",
     "profile": "id-islamic"
   },
   "news": {
-    "date": "2026-09-01",
-    "generated_at": "2026-09-01T11:19:54Z",
+    "date": "2026-09-02",
+    "generated_at": "2026-09-02T10:54:00Z",
     "ai_used": false,
     "model": null,
     "selected_items": 16,
