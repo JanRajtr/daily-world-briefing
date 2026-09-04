@@ -1,19 +1,19 @@
 {
-  "date": "2026-09-03",
-  "generated_at": "2026-09-03T10:50:08Z",
+  "date": "2026-09-04",
+  "generated_at": "2026-09-04T10:49:10Z",
   "market": {
-    "date": "2026-09-03",
-    "score": 18.628584338827583,
+    "date": "2026-09-04",
+    "score": 16.758611695875807,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-09-03T10:50:01Z",
+    "generated_at": "2026-09-04T10:49:03Z",
     "profile": "cs-buddhist"
   },
   "news": {
-    "date": "2026-09-03",
-    "generated_at": "2026-09-03T10:50:08Z",
+    "date": "2026-09-04",
+    "generated_at": "2026-09-04T10:49:10Z",
     "ai_used": false,
     "model": null,
-    "selected_items": 16,
+    "selected_items": 17,
     "feed_failures": 1,
     "profile": "cs-buddhist"
   },
