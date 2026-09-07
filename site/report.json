@@ -1,16 +1,16 @@
 {
-  "date": "2026-09-06",
-  "generated_at": "2026-09-06T10:28:35Z",
+  "date": "2026-09-07",
+  "generated_at": "2026-09-07T11:50:55Z",
   "market": {
-    "date": "2026-09-06",
+    "date": "2026-09-07",
     "score": 16.11110094792304,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-09-06T10:28:28Z",
+    "generated_at": "2026-09-07T11:50:49Z",
     "profile": "cs-buddhist"
   },
   "news": {
-    "date": "2026-09-06",
-    "generated_at": "2026-09-06T10:28:35Z",
+    "date": "2026-09-07",
+    "generated_at": "2026-09-07T11:50:55Z",
     "ai_used": false,
     "model": null,
     "selected_items": 16,
@@ -41,23 +41,29 @@
     }
   },
   "flight_price": {
-    "status": "error",
+    "status": "ok",
     "searched_date_pairs": 10,
-    "successful_date_pairs": 0,
+    "successful_date_pairs": 5,
     "failures": [
-      "2027-06-01: HTTPError: HTTP Error 429: Too Many Requests",
-      "2027-06-08: HTTPError: HTTP Error 429: Too Many Requests",
-      "2027-06-15: HTTPError: HTTP Error 429: Too Many Requests",
-      "2027-06-22: HTTPError: HTTP Error 429: Too Many Requests",
-      "2027-06-29: HTTPError: HTTP Error 429: Too Many Requests",
-      "2027-07-06: HTTPError: HTTP Error 429: Too Many Requests",
-      "2027-07-13: HTTPError: HTTP Error 429: Too Many Requests",
-      "2027-07-20: HTTPError: HTTP Error 429: Too Many Requests",
-      "2027-07-27: HTTPError: HTTP Error 429: Too Many Requests",
-      "2027-08-01: HTTPError: HTTP Error 429: Too Many Requests"
-    ],
-    "reason": "No verified Google Flights result was returned"
+      "2027-07-06: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-07-13: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-07-20: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-07-27: ValueError: Google Flights hasn't returned any results for this query.",
+      "2027-08-01: ValueError: Google Flights hasn't returned any results for this query."
+    ]
   },
-  "flight": null,
+  "flight": {
+    "price_czk": 97790,
+    "outbound_date": "2027-06-01",
+    "return_date": "2027-07-01",
+    "airlines": [
+      "Turkish Airlines"
+    ],
+    "outbound_stops": 1,
+    "duration_minutes": 1035,
+    "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
+    "checked_at": "2026-09-07T11:54:26+00:00",
+    "sampled_date_pairs": 10
+  },
   "profile": "cs-buddhist"
 }
