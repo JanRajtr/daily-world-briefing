@@ -1,19 +1,19 @@
 {
-  "date": "2026-09-16",
-  "generated_at": "2026-09-16T11:00:30Z",
+  "date": "2026-09-17",
+  "generated_at": "2026-09-17T11:11:09Z",
   "market": {
-    "date": "2026-09-16",
-    "score": 21.333468986217152,
+    "date": "2026-09-17",
+    "score": 23.06362404263912,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-09-16T11:00:23Z",
+    "generated_at": "2026-09-17T11:11:01Z",
     "profile": "cs-buddhist"
   },
   "news": {
-    "date": "2026-09-16",
-    "generated_at": "2026-09-16T11:00:30Z",
+    "date": "2026-09-17",
+    "generated_at": "2026-09-17T11:11:09Z",
     "ai_used": false,
     "model": null,
-    "selected_items": 20,
+    "selected_items": 19,
     "feed_failures": 1,
     "profile": "cs-buddhist"
   },
@@ -43,16 +43,15 @@
   "flight_price": {
     "status": "ok",
     "searched_date_pairs": 10,
-    "successful_date_pairs": 6,
+    "successful_date_pairs": 7,
     "failures": [
-      "2027-07-13: ValueError: Google Flights hasn't returned any results for this query.",
       "2027-07-20: ValueError: Google Flights hasn't returned any results for this query.",
       "2027-07-27: ValueError: Google Flights hasn't returned any results for this query.",
       "2027-08-01: ValueError: Google Flights hasn't returned any results for this query."
     ]
   },
   "flight": {
-    "price_czk": 97873,
+    "price_czk": 97887,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -61,7 +60,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-09-16T11:04:05+00:00",
+    "checked_at": "2026-09-17T11:14:48+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "cs-buddhist"
