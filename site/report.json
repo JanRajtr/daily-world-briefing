@@ -1,19 +1,19 @@
 {
-  "date": "2026-09-21",
-  "generated_at": "2026-09-21T12:15:05Z",
+  "date": "2026-09-22",
+  "generated_at": "2026-09-22T11:08:14Z",
   "market": {
-    "date": "2026-09-21",
-    "score": 21.034881171916382,
+    "date": "2026-09-22",
+    "score": 19.749223974134935,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-09-21T12:14:56Z",
+    "generated_at": "2026-09-22T11:08:05Z",
     "profile": "cs-buddhist"
   },
   "news": {
-    "date": "2026-09-21",
-    "generated_at": "2026-09-21T12:15:05Z",
+    "date": "2026-09-22",
+    "generated_at": "2026-09-22T11:08:14Z",
     "ai_used": false,
     "model": null,
-    "selected_items": 19,
+    "selected_items": 20,
     "feed_failures": 1,
     "profile": "cs-buddhist"
   },
@@ -25,7 +25,7 @@
     "reflection": {
       "status": "error",
       "attempts": 1,
-      "reason": "HTTPError: HTTP Error 413: Payload Too Large: Request Entity Too Large",
+      "reason": "HTTPError: HTTP Error 404: Not Found: The model `groq/compound-mini` does not exist or you do not have access to it.",
       "max_completion_tokens": 1000,
       "quote": "omitted",
       "spiritual_teaching": "omitted",
@@ -35,7 +35,7 @@
     "extras": {
       "status": "error",
       "attempts": 1,
-      "reason": "HTTPError: HTTP Error 413: Payload Too Large: Request Entity Too Large",
+      "reason": "HTTPError: HTTP Error 404: Not Found: The model `groq/compound` does not exist or you do not have access to it.",
       "max_completion_tokens": 3200,
       "model": "groq/compound"
     }
@@ -51,7 +51,7 @@
     ]
   },
   "flight": {
-    "price_czk": 97916,
+    "price_czk": 97947,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -60,7 +60,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-09-21T12:18:51+00:00",
+    "checked_at": "2026-09-22T11:11:27+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "cs-buddhist"
