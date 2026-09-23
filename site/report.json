@@ -1,16 +1,16 @@
 {
-  "date": "2026-09-22",
-  "generated_at": "2026-09-22T11:08:14Z",
+  "date": "2026-09-23",
+  "generated_at": "2026-09-23T10:58:18Z",
   "market": {
-    "date": "2026-09-22",
-    "score": 19.749223974134935,
+    "date": "2026-09-23",
+    "score": 19.91290236271628,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-09-22T11:08:05Z",
+    "generated_at": "2026-09-23T10:58:10Z",
     "profile": "cs-buddhist"
   },
   "news": {
-    "date": "2026-09-22",
-    "generated_at": "2026-09-22T11:08:14Z",
+    "date": "2026-09-23",
+    "generated_at": "2026-09-23T10:58:18Z",
     "ai_used": false,
     "model": null,
     "selected_items": 20,
@@ -51,7 +51,7 @@
     ]
   },
   "flight": {
-    "price_czk": 97947,
+    "price_czk": 97928,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
@@ -60,7 +60,7 @@
     "outbound_stops": 1,
     "duration_minutes": 1035,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-09-22T11:11:27+00:00",
+    "checked_at": "2026-09-23T11:01:25+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "cs-buddhist"
