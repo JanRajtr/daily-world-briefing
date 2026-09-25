@@ -1,16 +1,16 @@
 {
-  "date": "2026-09-24",
-  "generated_at": "2026-09-24T11:17:46Z",
+  "date": "2026-09-25",
+  "generated_at": "2026-09-25T11:22:29Z",
   "market": {
-    "date": "2026-09-24",
-    "score": 18.761630837192683,
+    "date": "2026-09-25",
+    "score": 18.947020447158756,
     "label": "N\u00edzk\u00e9",
-    "generated_at": "2026-09-24T11:17:35Z",
+    "generated_at": "2026-09-25T11:22:22Z",
     "profile": "cs-buddhist"
   },
   "news": {
-    "date": "2026-09-24",
-    "generated_at": "2026-09-24T11:17:46Z",
+    "date": "2026-09-25",
+    "generated_at": "2026-09-25T11:22:29Z",
     "ai_used": false,
     "model": null,
     "selected_items": 20,
@@ -50,16 +50,16 @@
     ]
   },
   "flight": {
-    "price_czk": 97927,
+    "price_czk": 100134,
     "outbound_date": "2027-06-01",
     "return_date": "2027-07-01",
     "airlines": [
-      "Turkish Airlines"
+      "Etihad"
     ],
     "outbound_stops": 1,
-    "duration_minutes": 1035,
+    "duration_minutes": 1000,
     "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-09-24T11:20:52+00:00",
+    "checked_at": "2026-09-25T11:25:39+00:00",
     "sampled_date_pairs": 10
   },
   "profile": "cs-buddhist"
