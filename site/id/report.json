@@ -1,16 +1,16 @@
 {
-  "date": "2026-10-01",
-  "generated_at": "2026-10-01T12:42:46Z",
+  "date": "2026-10-02",
+  "generated_at": "2026-10-02T12:06:26Z",
   "market": {
-    "date": "2026-10-01",
-    "score": 21.599848252768087,
+    "date": "2026-10-02",
+    "score": 21.754467808113585,
     "label": "Rendah",
-    "generated_at": "2026-10-01T12:42:38Z",
+    "generated_at": "2026-10-02T12:06:16Z",
     "profile": "id-islamic"
   },
   "news": {
-    "date": "2026-10-01",
-    "generated_at": "2026-10-01T12:42:46Z",
+    "date": "2026-10-02",
+    "generated_at": "2026-10-02T12:06:26Z",
     "ai_used": false,
     "model": null,
     "selected_items": 20,
@@ -40,21 +40,9 @@
     }
   },
   "flight_price": {
-    "status": "reused",
+    "status": "error",
     "source_profile": "cs-buddhist"
   },
-  "flight": {
-    "price_czk": 101568,
-    "outbound_date": "2027-06-01",
-    "return_date": "2027-07-01",
-    "airlines": [
-      "Etihad"
-    ],
-    "outbound_stops": 1,
-    "duration_minutes": 1000,
-    "url": "https://www.google.com/travel/flights?hl=cs&gl=cz&curr=CZK&tfs=CBwQAhogEgoyMDI3LTA2LTAxKAFqBwgBEgNQUkdyBwgBEgNDR0saIBIKMjAyNy0wNy0wMSgBagcIARIDQ0dLcgcIARIDUFJHQAFIA3ABmAEB&tfu=EgIIAg",
-    "checked_at": "2026-10-01T12:41:30+00:00",
-    "sampled_date_pairs": 10
-  },
+  "flight": null,
   "profile": "id-islamic"
 }
